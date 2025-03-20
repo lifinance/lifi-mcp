@@ -145,7 +145,7 @@ To integrate this server with the desktop app, add the following to your app's s
 {
   "mcpServers": {
     "lifi": {
-      "command": "./lifi-mcp",
+      "command": "lifi-mcp",
       "args": ["server"]
     }
   }
@@ -158,7 +158,7 @@ For wallet functionality, include keystore parameters:
 {
   "mcpServers": {
     "lifi": {
-      "command": "./lifi-mcp",
+      "command": "lifi-mcp",
       "args": ["server", "--keystore", "your-keystore", "--password", "your-password"]
     }
   }
