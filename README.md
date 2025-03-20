@@ -1,5 +1,18 @@
 # LI.FI MCP Server
 
+> ⚠️ **IMPORTANT SECURITY DISCLAIMER** ⚠️
+> 
+> **DO NOT use this tool with your main wallet keystore or wallets containing significant funds!**
+> 
+> This tool is for testing and experimental purposes only. There is potential for loss of funds due to:
+> - Software bugs or security vulnerabilities
+> - Transaction errors or misconfigurations
+> - Network issues or smart contract failures
+> 
+> Neither LI.FI nor the developers of this tool are responsible for any loss of funds resulting from the use of this freely available open-source software.
+> 
+> **Use at your own risk with test wallets only.**
+
 This MCP server integrates with the [LI.FI API](https://li.quest) to provide cross-chain swap functionality across multiple liquidity pools and bridges.
 
 ## Components
