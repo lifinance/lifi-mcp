@@ -29,9 +29,9 @@ archives:
       {{ .ProjectName }}_
       {{- .Os }}_
       {{- .Arch }}
-    replacements:
-      darwin: mac
-      amd64: x86_64
+    files:
+      - README.md
+      - LICENSE*
 
 checksum:
   name_template: 'checksums.txt'
