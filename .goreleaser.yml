@@ -1,9 +1,12 @@
+version: 2
+
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - env:
+  - id: lifi-mcp
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -16,9 +19,14 @@ builds:
       - -s -w
 
 archives:
-  - format_overrides:
+  - id: default
+    format_overrides:
       - goos: windows
         format: zip
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Os }}_
+      {{- .Arch }}
     replacements:
       darwin: mac
       amd64: x86_64
@@ -27,7 +35,7 @@ checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  name_template: "{{ incpatch .Version }}-next"
 
 changelog:
   sort: asc
