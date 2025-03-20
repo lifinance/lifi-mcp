@@ -24,7 +24,8 @@ archives:
   - id: default
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
     name_template: >-
       {{ .ProjectName }}_
       {{- .Os }}_
@@ -37,8 +38,9 @@ checksum:
   name_template: 'checksums.txt'
   algorithm: sha256
 
+# Using new snapshot configuration
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  name_template: "{{ .Version }}-SNAPSHOT-{{ .ShortCommit }}"
 
 changelog:
   sort: asc
