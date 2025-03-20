@@ -2173,7 +2173,7 @@ func main() {
 
 	// LI.FI API tools
 	
-	// 1. GetTokens - Fetch all known tokens
+	// GetTokens - Fetch all known tokens
 	getTokensTool := mcp.NewTool(
 		"GetTokens",
 		mcp.WithDescription("Fetch all tokens known to the LI.FI services"),
@@ -2186,7 +2186,7 @@ func main() {
 	)
 	mcpServer.AddTool(getTokensTool, GetTokensHandler)
 
-	// 2. GetToken - Fetch information about a specific token
+	// GetToken - Fetch information about a specific token
 	getTokenTool := mcp.NewTool(
 		"GetToken",
 		mcp.WithDescription("Get more information about a token by its address or symbol and its chain"),
@@ -2199,7 +2199,7 @@ func main() {
 	)
 	mcpServer.AddTool(getTokenTool, GetTokenHandler)
 
-	// 3. GetQuote - Get a quote for a token transfer
+	// GetQuote - Get a quote for a token transfer
 	getQuoteTool := mcp.NewTool(
 		"GetQuote",
 		mcp.WithDescription("Get a quote for a token transfer cross-chain or not"),
@@ -2232,7 +2232,7 @@ func main() {
 	)
 	mcpServer.AddTool(getQuoteTool, GetQuoteHandler)
 
-	// 4. GetStatus - Check the status of a cross-chain transfer
+	// GetStatus - Check the status of a cross-chain transfer
 	getStatusTool := mcp.NewTool(
 		"GetStatus",
 		mcp.WithDescription("Check the status of a cross-chain transfer"),
@@ -2248,7 +2248,7 @@ func main() {
 	)
 	mcpServer.AddTool(getStatusTool, GetStatusHandler)
 
-	// 5. GetChains - Get information about supported chains
+	// GetChains - Get information about supported chains
 	getChainsTool := mcp.NewTool(
 		"GetChains",
 		mcp.WithDescription("Get information about all currently supported chains"),
@@ -2257,7 +2257,7 @@ func main() {
 	)
 	mcpServer.AddTool(getChainsTool, GetChainsHandler)
 
-	// 6. GetConnections - Get possible connections between chains
+	// GetConnections - Get possible connections between chains
 	getConnectionsTool := mcp.NewTool(
 		"GetConnections",
 		mcp.WithDescription("Returns all possible connections based on from- or toChain"),
@@ -2274,21 +2274,21 @@ func main() {
 	)
 	mcpServer.AddTool(getConnectionsTool, GetConnectionsHandler)
 
-	// 7. GetTools - Get available bridges and exchanges
+	// GetTools - Get available bridges and exchanges
 	getToolsTool := mcp.NewTool(
 		"GetTools",
 		mcp.WithDescription("Get available bridges and exchanges"),
 	)
 	mcpServer.AddTool(getToolsTool, GetToolsHandler)
 	
-	// 8. GetWalletAddress - Get the Ethereum address for the loaded private key
+	// GetWalletAddress - Get the Ethereum address for the loaded private key
 	getWalletAddressTool := mcp.NewTool(
 		"GetWalletAddress",
 		mcp.WithDescription("Get the Ethereum address for the loaded private key. Use this tool whenever a user refers to their wallet or needs their wallet address"),
 	)
 	mcpServer.AddTool(getWalletAddressTool, GetWalletAddressHandler)
 	
-	// 9. GetNativeTokenBalance - Get the native token balance of a wallet
+	// GetNativeTokenBalance - Get the native token balance of a wallet
 	getNativeTokenBalanceTool := mcp.NewTool(
 		"GetNativeTokenBalance",
 		mcp.WithDescription("Get the native token (e.g ETH) balance of a wallet address"),
@@ -2301,7 +2301,7 @@ func main() {
 	)
 	mcpServer.AddTool(getNativeTokenBalanceTool, GetNativeTokenBalanceHandler)
 	
-	// Register the GetChainByName tool
+	// GetChainByName - Find a chain by name, key, or ID
 	getChainByNameTool := mcp.NewTool(
 		"GetChainByName",
 		mcp.WithDescription("Find a chain by name, key, or ID (case insensitive)"),
@@ -2311,7 +2311,7 @@ func main() {
 	)
 	mcpServer.AddTool(getChainByNameTool, GetChainByNameHandler)
 	
-	// Register the GetChainById tool
+	// GetChainById - Find a chain by its numeric ID
 	getChainByIdTool := mcp.NewTool(
 		"GetChainById",
 		mcp.WithDescription("Find a chain by its numeric ID"),
@@ -2321,7 +2321,7 @@ func main() {
 	)
 	mcpServer.AddTool(getChainByIdTool, GetChainByIdHandler)
 	
-	// Register the ExecuteQuote tool
+	// ExecuteQuote - Execute a quote transaction using the stored private key
 	executeQuoteTool := mcp.NewTool(
 		"ExecuteQuote",
 		mcp.WithDescription("Execute a quote transaction using the stored private key"),
@@ -2364,7 +2364,7 @@ func main() {
 	)
 	mcpServer.AddTool(executeQuoteTool, ExecuteQuoteHandler)
 
-	// 10. GetTokenBalance - Get the balance of a specific token for a wallet
+	// GetTokenBalance - Get the balance of a specific token for a wallet
 	getTokenBalanceTool := mcp.NewTool(
 		"GetTokenBalance",
 		mcp.WithDescription("Get the balance of a specific ERC20 token for a wallet address"),
@@ -2380,7 +2380,7 @@ func main() {
 	)
 	mcpServer.AddTool(getTokenBalanceTool, GetTokenBalanceHandler)
 	
-	// 11. ApproveToken - Approve a token for spending by another address
+	// ApproveToken - Approve a token for spending by another address
 	approveTokenTool := mcp.NewTool(
 		"ApproveToken",
 		mcp.WithDescription("Approve a specific amount of ERC20 tokens to be spent by another address"),
@@ -2399,7 +2399,7 @@ func main() {
 	)
 	mcpServer.AddTool(approveTokenTool, ApproveTokenHandler)
 	
-	// 12. TransferToken - Transfer ERC20 tokens to another address
+	// TransferToken - Transfer ERC20 tokens to another address
 	transferTokenTool := mcp.NewTool(
 		"TransferToken",
 		mcp.WithDescription("Transfer ERC20 tokens to another address"),
@@ -2418,7 +2418,7 @@ func main() {
 	)
 	mcpServer.AddTool(transferTokenTool, TransferTokenHandler)
 	
-	// 13. TransferNative - Transfer native cryptocurrency to another address
+	// TransferNative - Transfer native cryptocurrency to another address
 	transferNativeTool := mcp.NewTool(
 		"TransferNative",
 		mcp.WithDescription("Transfer native cryptocurrency (ETH, BNB, etc.) to another address"),
@@ -2434,7 +2434,7 @@ func main() {
 	)
 	mcpServer.AddTool(transferNativeTool, TransferNativeHandler)
 	
-	// 14. GetAllowance - Check the allowance of an ERC20 token for a specific spender
+	// GetAllowance - Check the allowance of an ERC20 token for a specific spender
 	getAllowanceTool := mcp.NewTool(
 		"GetAllowance",
 		mcp.WithDescription("Check the allowance of an ERC20 token for a specific spender"),
