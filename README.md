@@ -93,9 +93,23 @@ This MCP server integrates with the [LI.FI API](https://li.quest) to provide cro
 
 ## Getting Started
 
-### Prerequisites
-- Go 1.16 or higher
-- Access to Ethereum keystore (optional, for transaction signing)
+### Installation
+
+#### Using the Install Script
+
+You can install the LI.FI MCP server using the following command:
+
+```bash
+curl https://raw.githubusercontent.com/lifinance/lifi-mcp/refs/heads/main/install.sh | bash
+```
+
+#### Using Go Install
+
+Alternatively, you can install using Go:
+
+```bash
+go install github.com/lifinance/lifi-mcp@latest
+```
 
 
 ### Wallet Management
