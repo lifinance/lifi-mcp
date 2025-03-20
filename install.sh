@@ -8,7 +8,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
-GITHUB_REPO="space_cowboy/lifi-mcp"
+GITHUB_REPO="lifinance/lifi-mcp"
 BINARY_NAME="lifi-mcp"
 INSTALL_DIR="/usr/local/bin"
 

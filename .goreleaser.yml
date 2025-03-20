@@ -17,6 +17,8 @@ builds:
       - arm64
     ldflags:
       - -s -w
+    binary: lifi-mcp
+    main: ./main.go
 
 archives:
   - id: default
@@ -33,6 +35,7 @@ archives:
 
 checksum:
   name_template: 'checksums.txt'
+  algorithm: sha256
 
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
@@ -45,3 +48,12 @@ changelog:
       - '^test:'
       - Merge pull request
       - Merge branch
+
+release:
+  github:
+    owner: lifinance
+    name: lifi-mcp
+  draft: false
+  prerelease: auto
+  name_template: "{{ .Tag }}"
+  mode: replace
