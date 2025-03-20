@@ -119,7 +119,7 @@ go install github.com/lifinance/lifi-mcp@latest
 Run the server with an Ethereum keystore file:
 
 ```bash
-./lifi-mcp server --keystore <keystore-name> --password <keystore-password>
+lifi-mcp server --keystore <keystore-name> --password <keystore-password>
 ```
 
 The server will search for a file containing this name in the standard Ethereum keystore directory:
@@ -132,7 +132,7 @@ The server will search for a file containing this name in the standard Ethereum 
 Create a new wallet keystore:
 
 ```bash
-./lifi-mcp new-wallet --name <wallet-name> --password <wallet-password>
+lifi-mcp new-wallet --name <wallet-name> --password <wallet-password>
 ```
 
 This generates a new Ethereum wallet, saves it to the standard keystore location, and displays the wallet address.
