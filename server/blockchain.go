@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -25,18 +24,18 @@ func (s *Server) getNativeTokenBalanceHandler(ctx context.Context, request mcp.C
 	address := getStringArg(request, "address")
 
 	if rpcUrl == "" || address == "" {
-		return nil, errors.New("both rpcUrl and address parameters are required")
+		return mcp.NewToolResultError("both rpcUrl and address parameters are required"), nil
 	}
 
 	// Validate address format
 	if !common.IsHexAddress(address) {
-		return nil, fmt.Errorf("invalid Ethereum address format: %s", address)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid Ethereum address format: %s", address)), nil
 	}
 
 	// Connect to the Ethereum client
 	client, err := ethclient.Dial(rpcUrl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to the Ethereum client: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to connect to the Ethereum client: %v", err)), nil
 	}
 	defer client.Close()
 
@@ -46,7 +45,7 @@ func (s *Server) getNativeTokenBalanceHandler(ctx context.Context, request mcp.C
 	// Get the balance
 	balance, err := client.BalanceAt(ctx, accountAddress, nil) // nil means latest block
 	if err != nil {
-		return nil, fmt.Errorf("failed to get balance: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get balance: %v", err)), nil
 	}
 
 	// Get chain ID to determine which token symbol to display
@@ -75,7 +74,7 @@ func (s *Server) getNativeTokenBalanceHandler(ctx context.Context, request mcp.C
 
 	jsonResult, err := json.Marshal(result)
 	if err != nil {
-		return nil, fmt.Errorf("error serializing result: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error serializing result: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(jsonResult)), nil
@@ -88,28 +87,28 @@ func (s *Server) getTokenBalanceHandler(ctx context.Context, request mcp.CallToo
 	walletAddress := getStringArg(request, "walletAddress")
 
 	if rpcUrl == "" || tokenAddress == "" || walletAddress == "" {
-		return nil, errors.New("rpcUrl, tokenAddress, and walletAddress parameters are required")
+		return mcp.NewToolResultError("rpcUrl, tokenAddress, and walletAddress parameters are required"), nil
 	}
 
 	// Validate addresses
 	if !common.IsHexAddress(tokenAddress) {
-		return nil, fmt.Errorf("invalid token address format: %s", tokenAddress)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid token address format: %s", tokenAddress)), nil
 	}
 	if !common.IsHexAddress(walletAddress) {
-		return nil, fmt.Errorf("invalid wallet address format: %s", walletAddress)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid wallet address format: %s", walletAddress)), nil
 	}
 
 	// Connect to the Ethereum client
 	client, err := ethclient.Dial(rpcUrl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to the Ethereum client: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to connect to the Ethereum client: %v", err)), nil
 	}
 	defer client.Close()
 
 	// Parse the ERC20 ABI
 	parsedABI, err := abi.JSON(strings.NewReader(ERC20ABI))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse ERC20 ABI: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to parse ERC20 ABI: %v", err)), nil
 	}
 
 	// Create common.Address objects
@@ -119,7 +118,7 @@ func (s *Server) getTokenBalanceHandler(ctx context.Context, request mcp.CallToo
 	// Pack the input data for the balanceOf function
 	data, err := parsedABI.Pack("balanceOf", walletAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to pack input data: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to pack input data: %v", err)), nil
 	}
 
 	// Create the call message
@@ -131,14 +130,14 @@ func (s *Server) getTokenBalanceHandler(ctx context.Context, request mcp.CallToo
 	// Call the contract
 	result, err := client.CallContract(ctx, msg, nil) // nil means latest block
 	if err != nil {
-		return nil, fmt.Errorf("failed to call contract: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to call contract: %v", err)), nil
 	}
 
 	// Unpack the result
 	var balance *big.Int
 	err = parsedABI.UnpackIntoInterface(&balance, "balanceOf", result)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unpack result: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to unpack result: %v", err)), nil
 	}
 
 	// Get token information
@@ -167,7 +166,7 @@ func (s *Server) getTokenBalanceHandler(ctx context.Context, request mcp.CallToo
 
 	jsonResponse, err := json.Marshal(responseData)
 	if err != nil {
-		return nil, fmt.Errorf("error serializing result: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error serializing result: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(jsonResponse)), nil
@@ -182,43 +181,43 @@ func (s *Server) getAllowanceHandler(ctx context.Context, request mcp.CallToolRe
 
 	// Validate required parameters individually for better error messages
 	if rpcUrl == "" {
-		return nil, errors.New("RPC URL is required")
+		return mcp.NewToolResultError("RPC URL is required"), nil
 	}
 
 	if tokenAddress == "" {
-		return nil, errors.New("token address is required")
+		return mcp.NewToolResultError("token address is required"), nil
 	}
 
 	if ownerAddress == "" {
-		return nil, errors.New("owner address is required")
+		return mcp.NewToolResultError("owner address is required"), nil
 	}
 
 	if spenderAddress == "" {
-		return nil, errors.New("spender address is required")
+		return mcp.NewToolResultError("spender address is required"), nil
 	}
 
 	// Validate addresses
 	if !common.IsHexAddress(tokenAddress) {
-		return nil, fmt.Errorf("invalid token address format: %s", tokenAddress)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid token address format: %s", tokenAddress)), nil
 	}
 	if !common.IsHexAddress(ownerAddress) {
-		return nil, fmt.Errorf("invalid owner address format: %s", ownerAddress)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid owner address format: %s", ownerAddress)), nil
 	}
 	if !common.IsHexAddress(spenderAddress) {
-		return nil, fmt.Errorf("invalid spender address format: %s", spenderAddress)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid spender address format: %s", spenderAddress)), nil
 	}
 
 	// Connect to the Ethereum client
 	client, err := ethclient.Dial(rpcUrl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to the Ethereum client: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to connect to the Ethereum client: %v", err)), nil
 	}
 	defer client.Close()
 
 	// Parse the ERC20 ABI
 	parsedABI, err := abi.JSON(strings.NewReader(ERC20ABI))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse ERC20 ABI: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to parse ERC20 ABI: %v", err)), nil
 	}
 
 	// Convert addresses to common.Address
@@ -229,7 +228,7 @@ func (s *Server) getAllowanceHandler(ctx context.Context, request mcp.CallToolRe
 	// Pack the allowance function data
 	data, err := parsedABI.Pack("allowance", ownerAddr, spenderAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to pack allowance data: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to pack allowance data: %v", err)), nil
 	}
 
 	// Call the allowance function
@@ -249,14 +248,14 @@ func (s *Server) getAllowanceHandler(ctx context.Context, request mcp.CallToolRe
 			}
 		}
 
-		return nil, fmt.Errorf("failed to call allowance: %v. Revert reason: %s", err, revertReason)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to call allowance: %v. Revert reason: %s", err, revertReason)), nil
 	}
 
 	// Unpack the allowance
 	var allowance *big.Int
 	err = parsedABI.UnpackIntoInterface(&allowance, "allowance", result)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unpack allowance: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to unpack allowance: %v", err)), nil
 	}
 
 	// Get token information for better UX in response
@@ -286,7 +285,7 @@ func (s *Server) getAllowanceHandler(ctx context.Context, request mcp.CallToolRe
 
 	jsonResponse, err := json.Marshal(responseData)
 	if err != nil {
-		return nil, fmt.Errorf("error serializing result: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error serializing result: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(jsonResponse)), nil
@@ -295,19 +294,19 @@ func (s *Server) getAllowanceHandler(ctx context.Context, request mcp.CallToolRe
 func (s *Server) executeQuoteHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Check if private key is loaded
 	if s.privateKey == nil {
-		return nil, errors.New("no private key loaded. Please start the server with a keystore")
+		return mcp.NewToolResultError("no private key loaded. Please start the server with a keystore"), nil
 	}
 
 	// Get RPC URL (required)
 	rpcUrl := getStringArg(request, "rpcUrl")
 	if rpcUrl == "" {
-		return nil, errors.New("RPC URL is required")
+		return mcp.NewToolResultError("RPC URL is required"), nil
 	}
 
 	// Get transactionRequest object (required)
 	txRequest := getObjectArg(request, "transactionRequest")
 	if txRequest == nil {
-		return nil, errors.New("transaction request object is required")
+		return mcp.NewToolResultError("transaction request object is required"), nil
 	}
 
 	// Execute the transaction
@@ -317,7 +316,7 @@ func (s *Server) executeQuoteHandler(ctx context.Context, request mcp.CallToolRe
 func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Check if private key is loaded
 	if s.privateKey == nil {
-		return nil, errors.New("no private key loaded. Please start the server with a keystore")
+		return mcp.NewToolResultError("no private key loaded. Please start the server with a keystore"), nil
 	}
 
 	// Get required parameters
@@ -328,53 +327,53 @@ func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRe
 
 	// Validate required parameters individually for better error messages
 	if rpcUrl == "" {
-		return nil, errors.New("RPC URL is required")
+		return mcp.NewToolResultError("RPC URL is required"), nil
 	}
 
 	if tokenAddress == "" {
-		return nil, errors.New("token address is required")
+		return mcp.NewToolResultError("token address is required"), nil
 	}
 
 	if spenderAddress == "" {
-		return nil, errors.New("spender address is required")
+		return mcp.NewToolResultError("spender address is required"), nil
 	}
 
 	if amountStr == "" {
-		return nil, errors.New("amount is required")
+		return mcp.NewToolResultError("amount is required"), nil
 	}
 
 	// Validate addresses
 	if !common.IsHexAddress(tokenAddress) {
-		return nil, fmt.Errorf("invalid token address format: %s", tokenAddress)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid token address format: %s", tokenAddress)), nil
 	}
 	if !common.IsHexAddress(spenderAddress) {
-		return nil, fmt.Errorf("invalid spender address format: %s", spenderAddress)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid spender address format: %s", spenderAddress)), nil
 	}
 
 	// Parse amount
 	amount := new(big.Int)
 	amount, ok := amount.SetString(amountStr, 10)
 	if !ok {
-		return nil, fmt.Errorf("invalid amount format: %s", amountStr)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid amount format: %s", amountStr)), nil
 	}
 
 	// Connect to the Ethereum client
 	client, err := ethclient.Dial(rpcUrl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to the Ethereum client: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to connect to the Ethereum client: %v", err)), nil
 	}
 	defer client.Close()
 
 	// Get chain ID
 	chainID, err := client.ChainID(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get chain ID: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get chain ID: %v", err)), nil
 	}
 
 	// Parse the ERC20 ABI
 	parsedABI, err := abi.JSON(strings.NewReader(ERC20ABI))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse ERC20 ABI: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to parse ERC20 ABI: %v", err)), nil
 	}
 
 	// Get the wallet address from the private key
@@ -394,7 +393,7 @@ func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRe
 	// Pack the approve function data
 	data, err := parsedABI.Pack("approve", common.HexToAddress(spenderAddress), amount)
 	if err != nil {
-		return nil, fmt.Errorf("failed to pack approve data: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to pack approve data: %v", err)), nil
 	}
 
 	// Try simulating the transaction first to check for reverts
@@ -416,7 +415,7 @@ func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRe
 			}
 		}
 
-		return nil, fmt.Errorf("approval would fail: %v. Revert reason: %s", err, revertReason)
+		return mcp.NewToolResultError(fmt.Sprintf("approval would fail: %v. Revert reason: %s", err, revertReason)), nil
 	}
 
 	// Estimate gas for the transaction
@@ -426,7 +425,7 @@ func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRe
 		Data: data,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to estimate gas: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to estimate gas: %v", err)), nil
 	}
 
 	// Add a buffer to the gas limit for safety
@@ -435,13 +434,13 @@ func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRe
 	// Get nonce
 	nonce, err := client.PendingNonceAt(ctx, walletAddress)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get nonce: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get nonce: %v", err)), nil
 	}
 
 	// Get EIP-1559 fee suggestions
 	head, err := client.HeaderByNumber(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get latest block header: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get latest block header: %v", err)), nil
 	}
 
 	// Check if the network supports EIP-1559
@@ -451,7 +450,7 @@ func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRe
 		// Get fee suggestions
 		gasTipCap, err := client.SuggestGasTipCap(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to suggest gas tip cap: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("failed to suggest gas tip cap: %v", err)), nil
 		}
 
 		// Calculate max fee per gas (base fee * 2 + tip)
@@ -476,7 +475,7 @@ func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRe
 		// Legacy transaction for chains that don't support EIP-1559
 		gasPrice, err := client.SuggestGasPrice(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to suggest gas price: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("failed to suggest gas price: %v", err)), nil
 		}
 
 		// Create the legacy transaction
@@ -493,13 +492,13 @@ func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRe
 	// Sign the transaction
 	signedTx, err := types.SignTx(tx, types.LatestSignerForChainID(chainID), s.privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign transaction: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to sign transaction: %v", err)), nil
 	}
 
 	// Send the transaction
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send transaction: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to send transaction: %v", err)), nil
 	}
 
 	// Format the response
@@ -532,7 +531,7 @@ func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRe
 
 	jsonResponse, err := json.Marshal(responseData)
 	if err != nil {
-		return nil, fmt.Errorf("error serializing result: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error serializing result: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(jsonResponse)), nil
@@ -541,7 +540,7 @@ func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRe
 func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Check if private key is loaded
 	if s.privateKey == nil {
-		return nil, errors.New("no private key loaded. Please start the server with a keystore")
+		return mcp.NewToolResultError("no private key loaded. Please start the server with a keystore"), nil
 	}
 
 	// Get required parameters
@@ -552,53 +551,53 @@ func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolR
 
 	// Validate required parameters individually for better error messages
 	if rpcUrl == "" {
-		return nil, errors.New("RPC URL is required")
+		return mcp.NewToolResultError("RPC URL is required"), nil
 	}
 
 	if tokenAddress == "" {
-		return nil, errors.New("token address is required")
+		return mcp.NewToolResultError("token address is required"), nil
 	}
 
 	if recipientAddress == "" {
-		return nil, errors.New("recipient address (to) is required")
+		return mcp.NewToolResultError("recipient address (to) is required"), nil
 	}
 
 	if amountStr == "" {
-		return nil, errors.New("amount is required")
+		return mcp.NewToolResultError("amount is required"), nil
 	}
 
 	// Validate addresses
 	if !common.IsHexAddress(tokenAddress) {
-		return nil, fmt.Errorf("invalid token address format: %s", tokenAddress)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid token address format: %s", tokenAddress)), nil
 	}
 	if !common.IsHexAddress(recipientAddress) {
-		return nil, fmt.Errorf("invalid recipient address format: %s", recipientAddress)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid recipient address format: %s", recipientAddress)), nil
 	}
 
 	// Parse amount
 	amount := new(big.Int)
 	amount, ok := amount.SetString(amountStr, 10)
 	if !ok {
-		return nil, fmt.Errorf("invalid amount format: %s", amountStr)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid amount format: %s", amountStr)), nil
 	}
 
 	// Connect to the Ethereum client
 	client, err := ethclient.Dial(rpcUrl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to the Ethereum client: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to connect to the Ethereum client: %v", err)), nil
 	}
 	defer client.Close()
 
 	// Get chain ID
 	chainID, err := client.ChainID(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get chain ID: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get chain ID: %v", err)), nil
 	}
 
 	// Parse the ERC20 ABI
 	parsedABI, err := abi.JSON(strings.NewReader(ERC20ABI))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse ERC20 ABI: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to parse ERC20 ABI: %v", err)), nil
 	}
 
 	// Get the wallet address from the private key
@@ -618,7 +617,7 @@ func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolR
 	// Check token balance before transfer
 	balanceData, err := parsedABI.Pack("balanceOf", walletAddress)
 	if err != nil {
-		return nil, fmt.Errorf("failed to pack balanceOf data: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to pack balanceOf data: %v", err)), nil
 	}
 
 	// Call the balanceOf function
@@ -638,26 +637,26 @@ func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolR
 			}
 		}
 
-		return nil, fmt.Errorf("failed to call balanceOf: %v. Revert reason: %s", err, revertReason)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to call balanceOf: %v. Revert reason: %s", err, revertReason)), nil
 	}
 
 	// Unpack the balance
 	var balance *big.Int
 	err = parsedABI.UnpackIntoInterface(&balance, "balanceOf", balanceResult)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unpack balance: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to unpack balance: %v", err)), nil
 	}
 
 	// Check if the balance is sufficient
 	if balance.Cmp(amount) < 0 {
-		return nil, fmt.Errorf(
-			"insufficient token balance: have %s, need %s", balance.String(), amount.String())
+		return mcp.NewToolResultError(fmt.Sprintf(
+			"insufficient token balance: have %s, need %s", balance.String(), amount.String())), nil
 	}
 
 	// Pack the transfer function data
 	data, err := parsedABI.Pack("transfer", common.HexToAddress(recipientAddress), amount)
 	if err != nil {
-		return nil, fmt.Errorf("failed to pack transfer data: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to pack transfer data: %v", err)), nil
 	}
 
 	// Try simulating the transaction first to check for reverts
@@ -678,7 +677,7 @@ func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolR
 			}
 		}
 
-		return nil, fmt.Errorf("transfer would fail: %v. Revert reason: %s", err, revertReason)
+		return mcp.NewToolResultError(fmt.Sprintf("transfer would fail: %v. Revert reason: %s", err, revertReason)), nil
 	}
 
 	// Estimate gas for the transaction
@@ -688,7 +687,7 @@ func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolR
 		Data: data,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to estimate gas: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to estimate gas: %v", err)), nil
 	}
 
 	// Add a buffer to the gas limit for safety
@@ -697,13 +696,13 @@ func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolR
 	// Get nonce
 	nonce, err := client.PendingNonceAt(ctx, walletAddress)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get nonce: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get nonce: %v", err)), nil
 	}
 
 	// Get latest block header to check for EIP-1559 support
 	head, err := client.HeaderByNumber(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get latest block header: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get latest block header: %v", err)), nil
 	}
 
 	// Create and sign the transaction based on EIP-1559 support
@@ -713,7 +712,7 @@ func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolR
 		// Get fee suggestions
 		gasTipCap, err := client.SuggestGasTipCap(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to suggest gas tip cap: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("failed to suggest gas tip cap: %v", err)), nil
 		}
 
 		// Calculate max fee per gas (base fee * 2 + tip)
@@ -738,7 +737,7 @@ func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolR
 		// Legacy transaction for chains that don't support EIP-1559
 		gasPrice, err := client.SuggestGasPrice(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to suggest gas price: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("failed to suggest gas price: %v", err)), nil
 		}
 
 		// Create the legacy transaction
@@ -755,13 +754,13 @@ func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolR
 	// Sign the transaction
 	signedTx, err := types.SignTx(tx, types.LatestSignerForChainID(chainID), s.privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign transaction: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to sign transaction: %v", err)), nil
 	}
 
 	// Send the transaction
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send transaction: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to send transaction: %v", err)), nil
 	}
 
 	// Format the response
@@ -794,7 +793,7 @@ func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolR
 
 	jsonResponse, err := json.Marshal(responseData)
 	if err != nil {
-		return nil, fmt.Errorf("error serializing result: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error serializing result: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(jsonResponse)), nil
@@ -803,7 +802,7 @@ func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolR
 func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Check if private key is loaded
 	if s.privateKey == nil {
-		return nil, errors.New("no private key loaded. Please start the server with a keystore")
+		return mcp.NewToolResultError("no private key loaded. Please start the server with a keystore"), nil
 	}
 
 	// Get required parameters
@@ -813,40 +812,40 @@ func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallTool
 
 	// Validate required parameters individually for better error messages
 	if rpcUrl == "" {
-		return nil, errors.New("RPC URL is required")
+		return mcp.NewToolResultError("RPC URL is required"), nil
 	}
 
 	if recipientAddress == "" {
-		return nil, errors.New("recipient address (to) is required")
+		return mcp.NewToolResultError("recipient address (to) is required"), nil
 	}
 
 	if amountStr == "" {
-		return nil, errors.New("amount is required")
+		return mcp.NewToolResultError("amount is required"), nil
 	}
 
 	// Validate recipient address
 	if !common.IsHexAddress(recipientAddress) {
-		return nil, fmt.Errorf("invalid recipient address format: %s", recipientAddress)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid recipient address format: %s", recipientAddress)), nil
 	}
 
 	// Parse amount
 	amount := new(big.Int)
 	amount, ok := amount.SetString(amountStr, 10)
 	if !ok {
-		return nil, fmt.Errorf("invalid amount format: %s", amountStr)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid amount format: %s", amountStr)), nil
 	}
 
 	// Connect to the Ethereum client
 	client, err := ethclient.Dial(rpcUrl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to the Ethereum client: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to connect to the Ethereum client: %v", err)), nil
 	}
 	defer client.Close()
 
 	// Get chain ID
 	chainID, err := client.ChainID(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get chain ID: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get chain ID: %v", err)), nil
 	}
 
 	// Get the wallet address from the private key
@@ -863,7 +862,7 @@ func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallTool
 	// Check balance before transfer
 	balance, err := client.BalanceAt(ctx, walletAddress, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get wallet balance: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get wallet balance: %v", err)), nil
 	}
 
 	// Standard gas for ETH transfer is 21000
@@ -872,7 +871,7 @@ func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallTool
 	// Get latest block header to check for EIP-1559 support
 	head, err := client.HeaderByNumber(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get latest block header: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get latest block header: %v", err)), nil
 	}
 
 	// Calculate gas cost based on network type (EIP-1559 or legacy)
@@ -883,7 +882,7 @@ func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallTool
 		// EIP-1559 network
 		gasTipCap, err := client.SuggestGasTipCap(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to suggest gas tip cap: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("failed to suggest gas tip cap: %v", err)), nil
 		}
 
 		// Calculate max fee per gas (base fee * 2 + tip)
@@ -899,15 +898,15 @@ func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallTool
 		// Check if we have enough funds
 		totalNeeded := new(big.Int).Add(amount, gasCost)
 		if balance.Cmp(totalNeeded) < 0 {
-			return nil, fmt.Errorf(
+			return mcp.NewToolResultError(fmt.Sprintf(
 				"insufficient balance: have %s, need %s (including max gas cost)",
-				balance.String(), totalNeeded.String())
+				balance.String(), totalNeeded.String())), nil
 		}
 
 		// Get nonce
 		nonce, err := client.PendingNonceAt(ctx, walletAddress)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get nonce: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("failed to get nonce: %v", err)), nil
 		}
 
 		// Create the EIP-1559 transaction
@@ -926,7 +925,7 @@ func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallTool
 		// Legacy network
 		gasPrice, err := client.SuggestGasPrice(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to suggest gas price: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("failed to suggest gas price: %v", err)), nil
 		}
 
 		// Calculate gas cost
@@ -935,15 +934,15 @@ func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallTool
 		// Check if we have enough funds
 		totalNeeded := new(big.Int).Add(amount, gasCost)
 		if balance.Cmp(totalNeeded) < 0 {
-			return nil, fmt.Errorf(
+			return mcp.NewToolResultError(fmt.Sprintf(
 				"insufficient balance: have %s, need %s (including gas cost)",
-				balance.String(), totalNeeded.String())
+				balance.String(), totalNeeded.String())), nil
 		}
 
 		// Get nonce
 		nonce, err := client.PendingNonceAt(ctx, walletAddress)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get nonce: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("failed to get nonce: %v", err)), nil
 		}
 
 		// Create the legacy transaction
@@ -961,7 +960,7 @@ func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallTool
 	// Sign the transaction
 	signedTx, err := types.SignTx(tx, types.LatestSignerForChainID(chainID), s.privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign transaction: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to sign transaction: %v", err)), nil
 	}
 
 	// Try simulating the transaction to check for reverts
@@ -999,13 +998,13 @@ func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallTool
 			}
 		}
 
-		return nil, fmt.Errorf("transfer would fail: %v. Revert reason: %s", err, revertReason)
+		return mcp.NewToolResultError(fmt.Sprintf("transfer would fail: %v. Revert reason: %s", err, revertReason)), nil
 	}
 
 	// Send the transaction
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send transaction: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to send transaction: %v", err)), nil
 	}
 
 	// Format the response
@@ -1038,7 +1037,7 @@ func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallTool
 
 	jsonResponse, err := json.Marshal(responseData)
 	if err != nil {
-		return nil, fmt.Errorf("error serializing result: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error serializing result: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(jsonResponse)), nil

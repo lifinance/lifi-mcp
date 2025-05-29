@@ -135,20 +135,20 @@ func getNativeTokenInfo(chainID *big.Int) (string, int, error) {
 func (s *Server) executeTransactionRequest(ctx context.Context, txRequest map[string]interface{}, rpcUrl string) (*mcp.CallToolResult, error) {
 	// Validate the RPC URL
 	if rpcUrl == "" {
-		return nil, fmt.Errorf("RPC URL is required")
+		return mcp.NewToolResultError("RPC URL is required"), nil
 	}
 
 	// Connect to the Ethereum client
 	client, err := ethclient.Dial(rpcUrl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to the Ethereum client: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to connect to the Ethereum client: %v", err)), nil
 	}
 	defer client.Close()
 
 	// Get chain ID from the client
 	networkChainID, err := client.ChainID(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get chain ID: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get chain ID: %v", err)), nil
 	}
 
 	// Get and validate transaction parameters
@@ -159,11 +159,11 @@ func (s *Server) executeTransactionRequest(ctx context.Context, txRequest map[st
 
 	// Validate required transaction parameters
 	if tohex == "" {
-		return nil, fmt.Errorf("transaction 'to' address is required in transactionRequest")
+		return mcp.NewToolResultError("transaction 'to' address is required in transactionRequest"), nil
 	}
 
 	if datahex == "" {
-		return nil, fmt.Errorf("transaction 'data' is required in transactionRequest")
+		return mcp.NewToolResultError("transaction 'data' is required in transactionRequest"), nil
 	}
 
 	// Get the wallet address
@@ -171,9 +171,9 @@ func (s *Server) executeTransactionRequest(ctx context.Context, txRequest map[st
 
 	// If from address is specified, verify it matches our wallet address
 	if fromhex != "" && !strings.EqualFold(fromhex, walletAddress.Hex()) {
-		return nil, fmt.Errorf(
+		return mcp.NewToolResultError(fmt.Sprintf(
 			"transaction 'from' address (%s) doesn't match wallet address (%s)",
-			fromhex, walletAddress.Hex())
+			fromhex, walletAddress.Hex())), nil
 	}
 
 	// Convert chain ID from request
@@ -193,9 +193,9 @@ func (s *Server) executeTransactionRequest(ctx context.Context, txRequest map[st
 
 		// Validate chain ID matches the network
 		if requestChainID != nil && requestChainID.Cmp(networkChainID) != 0 {
-			return nil, fmt.Errorf(
+			return mcp.NewToolResultError(fmt.Sprintf(
 				"chain ID in transaction (%s) doesn't match network chain ID (%s)",
-				requestChainID.String(), networkChainID.String())
+				requestChainID.String(), networkChainID.String())), nil
 		}
 	}
 
@@ -228,7 +228,7 @@ func (s *Server) executeTransactionRequest(ctx context.Context, txRequest map[st
 	} else {
 		gasPriceInt, err = client.SuggestGasPrice(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to suggest gas price: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("failed to suggest gas price: %v", err)), nil
 		}
 	}
 
@@ -240,7 +240,7 @@ func (s *Server) executeTransactionRequest(ctx context.Context, txRequest map[st
 		dataBytes, err = hex.DecodeString(datahex)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("invalid transaction data: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid transaction data: %v", err)), nil
 	}
 
 	// Parse gas limit or estimate it
@@ -249,13 +249,13 @@ func (s *Server) executeTransactionRequest(ctx context.Context, txRequest map[st
 		if strings.HasPrefix(gasLimitHex, "0x") {
 			gasLimitInt64, err := strconv.ParseInt(gasLimitHex[2:], 16, 64)
 			if err != nil {
-				return nil, fmt.Errorf("invalid gas limit: %s", gasLimitHex)
+				return mcp.NewToolResultError(fmt.Sprintf("invalid gas limit: %s", gasLimitHex)), nil
 			}
 			gasLimitInt = uint64(gasLimitInt64)
 		} else {
 			gasLimitInt64, err := strconv.ParseInt(gasLimitHex, 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("invalid gas limit: %s", gasLimitHex)
+				return mcp.NewToolResultError(fmt.Sprintf("invalid gas limit: %s", gasLimitHex)), nil
 			}
 			gasLimitInt = uint64(gasLimitInt64)
 		}
@@ -273,7 +273,7 @@ func (s *Server) executeTransactionRequest(ctx context.Context, txRequest map[st
 
 		gasLimitInt, err = client.EstimateGas(ctx, msg)
 		if err != nil {
-			return nil, fmt.Errorf("failed to estimate gas: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("failed to estimate gas: %v", err)), nil
 		}
 
 		// Add a buffer to the gas limit to avoid out-of-gas errors
@@ -283,7 +283,7 @@ func (s *Server) executeTransactionRequest(ctx context.Context, txRequest map[st
 	// Get current nonce
 	nonceInt, err := client.PendingNonceAt(ctx, walletAddress)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get nonce: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get nonce: %v", err)), nil
 	}
 
 	// Create and send the transaction
@@ -299,7 +299,7 @@ func (s *Server) executeTransactionRequest(ctx context.Context, txRequest map[st
 	// Sign the transaction with the private key
 	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(requestChainID), s.privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign transaction: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to sign transaction: %v", err)), nil
 	}
 
 	// Try simulating the transaction first to check for reverts
@@ -328,13 +328,13 @@ func (s *Server) executeTransactionRequest(ctx context.Context, txRequest map[st
 			}
 		}
 
-		return nil, fmt.Errorf("transaction would fail: %v. Revert reason: %s", err, revertReason)
+		return mcp.NewToolResultError(fmt.Sprintf("transaction would fail: %v. Revert reason: %s", err, revertReason)), nil
 	}
 
 	// Send the transaction
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send transaction: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to send transaction: %v", err)), nil
 	}
 
 	// Return the transaction hash and other details
@@ -351,7 +351,7 @@ func (s *Server) executeTransactionRequest(ctx context.Context, txRequest map[st
 
 	jsonResult, err := json.Marshal(result)
 	if err != nil {
-		return nil, fmt.Errorf("error serializing result: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error serializing result: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(jsonResult)), nil

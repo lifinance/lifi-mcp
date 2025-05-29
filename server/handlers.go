@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -90,7 +89,7 @@ func loadKeystore(keystoreName, password string) (*ecdsa.PrivateKey, error) {
 // GetWalletAddress returns the Ethereum address corresponding to the loaded private key
 func (s *Server) GetWalletAddress() (string, error) {
 	if s.privateKey == nil {
-		return "", errors.New("no private key loaded")
+		return "", fmt.Errorf("no private key loaded")
 	}
 
 	publicKey := crypto.PubkeyToAddress(s.privateKey.PublicKey)
@@ -182,14 +181,14 @@ func (s *Server) getTokensHandler(ctx context.Context, request mcp.CallToolReque
 	// Make the request
 	resp, err := http.Get(requestURL)
 	if err != nil {
-		return nil, fmt.Errorf("error making request: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
 	}
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading response: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(body)), nil
@@ -200,7 +199,7 @@ func (s *Server) getTokenHandler(ctx context.Context, request mcp.CallToolReques
 	token := getStringArg(request, "token")
 
 	if chain == "" || token == "" {
-		return nil, errors.New("both chain and token parameters are required")
+		return mcp.NewToolResultError("both chain and token parameters are required"), nil
 	}
 
 	// Build the query parameters
@@ -214,14 +213,14 @@ func (s *Server) getTokenHandler(ctx context.Context, request mcp.CallToolReques
 	// Make the request
 	resp, err := http.Get(requestURL)
 	if err != nil {
-		return nil, fmt.Errorf("error making request: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
 	}
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading response: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(body)), nil
@@ -238,7 +237,7 @@ func (s *Server) getQuoteHandler(ctx context.Context, request mcp.CallToolReques
 
 	// Required parameters check
 	if fromChain == "" || toChain == "" || fromToken == "" || toToken == "" || fromAddress == "" || fromAmount == "" {
-		return nil, errors.New("required parameters: fromChain, toChain, fromToken, toToken, fromAddress, fromAmount")
+		return mcp.NewToolResultError("required parameters: fromChain, toChain, fromToken, toToken, fromAddress, fromAmount"), nil
 	}
 
 	// Get optional parameters
@@ -292,14 +291,14 @@ func (s *Server) getQuoteHandler(ctx context.Context, request mcp.CallToolReques
 	// Make the request
 	resp, err := http.Get(requestURL)
 	if err != nil {
-		return nil, fmt.Errorf("error making request: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
 	}
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading response: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(body)), nil
@@ -309,7 +308,7 @@ func (s *Server) getStatusHandler(ctx context.Context, request mcp.CallToolReque
 	txHash := getStringArg(request, "txHash")
 
 	if txHash == "" {
-		return nil, errors.New("txHash parameter is required")
+		return mcp.NewToolResultError("txHash parameter is required"), nil
 	}
 
 	// Get optional parameters
@@ -337,14 +336,14 @@ func (s *Server) getStatusHandler(ctx context.Context, request mcp.CallToolReque
 	// Make the request
 	resp, err := http.Get(requestURL)
 	if err != nil {
-		return nil, fmt.Errorf("error making request: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
 	}
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading response: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(body)), nil
@@ -357,7 +356,7 @@ func (s *Server) getChainsHandler(ctx context.Context, request mcp.CallToolReque
 	if !chainsCacheInitialized {
 		err := refreshChainsCache()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch chain data: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("failed to fetch chain data: %v", err)), nil
 		}
 	}
 
@@ -365,7 +364,7 @@ func (s *Server) getChainsHandler(ctx context.Context, request mcp.CallToolReque
 	if chainTypes == "" {
 		jsonData, err := json.Marshal(chainsCache)
 		if err != nil {
-			return nil, fmt.Errorf("error serializing chain data: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("error serializing chain data: %v", err)), nil
 		}
 		return mcp.NewToolResultText(string(jsonData)), nil
 	}
@@ -399,14 +398,14 @@ func (s *Server) getChainsHandler(ctx context.Context, request mcp.CallToolReque
 		// Make the request
 		resp, err := http.Get(requestURL)
 		if err != nil {
-			return nil, fmt.Errorf("error making request: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
 		}
 		defer resp.Body.Close()
 
 		// Read the response body
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return nil, fmt.Errorf("error reading response: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 		}
 
 		return mcp.NewToolResultText(string(body)), nil
@@ -415,7 +414,7 @@ func (s *Server) getChainsHandler(ctx context.Context, request mcp.CallToolReque
 	// Return the filtered chains
 	jsonData, err := json.Marshal(filteredChains)
 	if err != nil {
-		return nil, fmt.Errorf("error serializing filtered chain data: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error serializing filtered chain data: %v", err)), nil
 	}
 	return mcp.NewToolResultText(string(jsonData)), nil
 }
@@ -462,14 +461,14 @@ func (s *Server) getConnectionsHandler(ctx context.Context, request mcp.CallTool
 	// Make the request
 	resp, err := http.Get(requestURL)
 	if err != nil {
-		return nil, fmt.Errorf("error making request: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
 	}
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading response: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(body)), nil
@@ -499,14 +498,14 @@ func (s *Server) getToolsHandler(ctx context.Context, request mcp.CallToolReques
 	// Make the request
 	resp, err := http.Get(requestURL)
 	if err != nil {
-		return nil, fmt.Errorf("error making request: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
 	}
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading response: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(body)), nil
@@ -517,21 +516,21 @@ func (s *Server) getChainByIdHandler(ctx context.Context, request mcp.CallToolRe
 	idStr := getStringArg(request, "id")
 
 	if idStr == "" {
-		return nil, errors.New("ID parameter is required")
+		return mcp.NewToolResultError("ID parameter is required"), nil
 	}
 
 	// Attempt to parse the ID as an integer
 	var id int
 	_, err := fmt.Sscanf(idStr, "%d", &id)
 	if err != nil {
-		return nil, fmt.Errorf("invalid ID format. Expected integer, got: %s", idStr)
+		return mcp.NewToolResultError(fmt.Sprintf("invalid ID format. Expected integer, got: %s", idStr)), nil
 	}
 
 	// Ensure the chains are loaded
 	if !chainsCacheInitialized {
 		err := refreshChainsCache()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch chain data: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("failed to fetch chain data: %v", err)), nil
 		}
 	}
 
@@ -541,7 +540,7 @@ func (s *Server) getChainByIdHandler(ctx context.Context, request mcp.CallToolRe
 			// Found a match, return the chain data
 			chainData, err := json.Marshal(chain)
 			if err != nil {
-				return nil, fmt.Errorf("error serializing chain data: %v", err)
+				return mcp.NewToolResultError(fmt.Sprintf("error serializing chain data: %v", err)), nil
 			}
 
 			return mcp.NewToolResultText(string(chainData)), nil
@@ -549,7 +548,7 @@ func (s *Server) getChainByIdHandler(ctx context.Context, request mcp.CallToolRe
 	}
 
 	// No matching chain found
-	return nil, fmt.Errorf("no chain found with ID: %d", id)
+	return mcp.NewToolResultError(fmt.Sprintf("no chain found with ID: %d", id)), nil
 }
 
 func (s *Server) getChainByNameHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -557,14 +556,14 @@ func (s *Server) getChainByNameHandler(ctx context.Context, request mcp.CallTool
 	name := getStringArg(request, "name")
 
 	if name == "" {
-		return nil, errors.New("name parameter is required")
+		return mcp.NewToolResultError("name parameter is required"), nil
 	}
 
 	// Ensure the chains are loaded
 	if !chainsCacheInitialized {
 		err := refreshChainsCache()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch chain data: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("failed to fetch chain data: %v", err)), nil
 		}
 	}
 
@@ -580,7 +579,7 @@ func (s *Server) getChainByNameHandler(ctx context.Context, request mcp.CallTool
 			// Found a match, return the chain data
 			chainData, err := json.Marshal(chain)
 			if err != nil {
-				return nil, fmt.Errorf("error serializing chain data: %v", err)
+				return mcp.NewToolResultError(fmt.Sprintf("error serializing chain data: %v", err)), nil
 			}
 
 			return mcp.NewToolResultText(string(chainData)), nil
@@ -588,13 +587,13 @@ func (s *Server) getChainByNameHandler(ctx context.Context, request mcp.CallTool
 	}
 
 	// No matching chain found
-	return nil, fmt.Errorf("no chain found matching name: %s", name)
+	return mcp.NewToolResultError(fmt.Sprintf("no chain found matching name: %s", name)), nil
 }
 
 func (s *Server) getWalletAddressHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	address, err := s.GetWalletAddress()
 	if err != nil {
-		return nil, fmt.Errorf("error getting wallet address: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error getting wallet address: %v", err)), nil
 	}
 
 	result := map[string]string{
@@ -603,7 +602,7 @@ func (s *Server) getWalletAddressHandler(ctx context.Context, request mcp.CallTo
 
 	jsonResult, err := json.Marshal(result)
 	if err != nil {
-		return nil, fmt.Errorf("error serializing result: %v", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error serializing result: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(jsonResult)), nil
