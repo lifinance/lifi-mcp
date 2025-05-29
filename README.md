@@ -1,4 +1,4 @@
-# LI.FI MCP Server
+# LiFi MCP Server
 
 > ⚠️ **IMPORTANT SECURITY DISCLAIMER** ⚠️
 > 
@@ -13,81 +13,83 @@
 > 
 > **Use at your own risk with test wallets only.**
 
-This MCP server integrates with the [LI.FI API](https://li.quest) to provide cross-chain swap functionality across multiple liquidity pools and bridges.
+This MCP server integrates with the [LI.FI API](https://li.quest) to provide cross-chain swap functionality across multiple liquidity pools and bridges via the Model Context Protocol (MCP).
+
+The Model Context Protocol (MCP) is a protocol for AI model integration, allowing AI models to access external tools and data sources.
 
 ## Components
 
 ### Tools
 
 #### Token Information
-- **GetTokens**
+- **get-tokens**
   - Fetch all tokens known to the LI.FI services
   - Parameters: `chains`, `chainTypes`, `minPriceUSD`
   
-- **GetToken**
+- **get-token**
   - Get detailed information about a specific token
   - Parameters: `chain` (required), `token` (required)
 
 #### Chain Information
-- **GetChains**
+- **get-chains**
   - Get information about all supported chains
   - Parameters: `chainTypes`
   
-- **GetChainById**
+- **get-chain-by-id**
   - Find a chain by its numeric ID
   - Parameters: `id` (required)
   
-- **GetChainByName**
+- **get-chain-by-name**
   - Find a chain by name, key, or ID (case insensitive)
   - Parameters: `name` (required)
 
 #### Cross-Chain Operations
-- **GetQuote**
+- **get-quote**
   - Get a quote for a token transfer (cross-chain or same-chain)
   - Parameters: `fromChain`, `toChain`, `fromToken`, `toToken`, `fromAddress`, `fromAmount`, etc.
   
-- **GetStatus**
+- **get-status**
   - Check the status of a cross-chain transfer
   - Parameters: `txHash` (required), `bridge`, `fromChain`, `toChain`
   
-- **GetConnections**
+- **get-connections**
   - Returns all possible connections between chains
   - Parameters: `fromChain`, `toChain`, `fromToken`, `toToken`, `chainTypes`
   
-- **GetTools**
+- **get-tools**
   - Get available bridges and exchanges
   - Parameters: `chains`
 
 #### Wallet Operations
-- **GetWalletAddress**
+- **get-wallet-address**
   - Get the Ethereum address for the loaded private key
   
-- **GetNativeTokenBalance**
+- **get-native-token-balance**
   - Get the native token balance of a wallet
   - Parameters: `rpcUrl` (required), `address` (required)
   
-- **GetTokenBalance**
+- **get-token-balance**
   - Get the balance of a specific ERC20 token for a wallet
   - Parameters: `rpcUrl`, `tokenAddress`, `walletAddress`
   
-- **GetAllowance**
+- **get-allowance**
   - Check the allowance of an ERC20 token for a specific spender
   - Parameters: `rpcUrl`, `tokenAddress`, `ownerAddress`, `spenderAddress`
 
 #### Transaction Operations
-- **ExecuteQuote**
+- **execute-quote**
   - Execute a quote transaction using the stored private key
   - Parameters: `rpcUrl`, `transactionRequest`
   
-- **ApproveToken**
+- **approve-token**
   - Approve a specific amount of ERC20 tokens to be spent by another address
   - Parameters: `rpcUrl`, `tokenAddress`, `spenderAddress`, `amount`
   
-- **TransferToken**
+- **transfer-token**
   - Transfer ERC20 tokens to another address
   - Parameters: `rpcUrl`, `tokenAddress`, `to`, `amount`
   
-- **TransferNative**
+- **transfer-native**
   - Transfer native cryptocurrency to another address
   - Parameters: `rpcUrl`, `to`, `amount`
 
@@ -95,76 +97,168 @@ This MCP server integrates with the [LI.FI API](https://li.quest) to provide cro
 
 ### Installation
 
-#### Using the Install Script
-
-You can install the LI.FI MCP server using the following command:
-
-```bash
-curl https://raw.githubusercontent.com/lifinance/lifi-mcp/refs/heads/main/install.sh | bash
-```
-
 #### Using Go Install
-
-Alternatively, you can install using Go:
 
 ```bash
 go install github.com/lifinance/lifi-mcp@latest
 ```
 
+### Usage
+
+Start the MCP server:
+
+```bash
+lifi-mcp
+```
+
+With keystore for transaction capabilities:
+
+```bash
+lifi-mcp --keystore <keystore-name> --password <keystore-password>
+```
+
+Check the version:
+
+```bash
+lifi-mcp --version
+```
+
+### Using as a Package
+
+You can import the server in your Go projects:
+
+#### Stdio Mode
+
+```go
+import "github.com/lifinance/lifi-mcp/server"
+
+func main() {
+    // Create a new server with version
+    s := server.NewServer("1.0.0")
+    
+    // Start the server in stdio mode
+    if err := s.ServeStdio(); err != nil {
+        log.Fatalf("Server error: %v", err)
+    }
+}
+```
+
+#### In-Process Mode
+
+For in-process usage with the mcp-go client library:
+
+```go
+import (
+    "context"
+    "log"
+    
+    "github.com/mark3labs/mcp-go/client"
+    "github.com/mark3labs/mcp-go/client/transport"
+    "github.com/lifinance/lifi-mcp/server"
+)
+
+func main() {
+    // Create the LiFi MCP server
+    lifiServer := server.NewServer("1.0.0")
+
+    // Create an in-process transport using the server's MCPServer
+    inProcessTransport := transport.NewInProcessTransport(lifiServer.GetMCPServer())
+
+    // Create an MCP client using the in-process transport
+    mcpClient := client.NewMCPClient(inProcessTransport)
+
+    // Start the transport
+    ctx := context.Background()
+    if err := mcpClient.Connect(ctx); err != nil {
+        log.Fatalf("Failed to connect: %v", err)
+    }
+    defer mcpClient.Close()
+
+    // Initialize the client
+    if err := mcpClient.Initialize(ctx); err != nil {
+        log.Fatalf("Failed to initialize: %v", err)
+    }
+
+    // List available tools
+    tools, err := mcpClient.ListTools(ctx)
+    if err != nil {
+        log.Fatalf("Failed to list tools: %v", err)
+    }
+
+    // Use the tools...
+    result, err := mcpClient.CallTool(ctx, "get-chain-by-name", map[string]any{
+        "name": "ethereum",
+    })
+    if err != nil {
+        log.Fatalf("Failed to call tool: %v", err)
+    }
+}
+```
 
 ### Wallet Management
 
-#### Using an Existing Keystore
-
-Run the server with an Ethereum keystore file:
-
-```bash
-lifi-mcp server --keystore <keystore-name> --password <keystore-password>
-```
-
-The server will search for a file containing this name in the standard Ethereum keystore directory:
+The server will search for keystore files in the standard Ethereum keystore directory:
 - Linux: ~/.ethereum/keystore
 - macOS: ~/Library/Ethereum/keystore
 - Windows: %APPDATA%\Ethereum\keystore
 
-#### Creating a New Wallet
+### Usage with Model Context Protocol
 
-Create a new wallet keystore:
+To integrate this server with apps that support MCP:
+
+```json
+{
+  "mcpServers": {
+    "lifi": {
+      "command": "lifi-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+With keystore for transaction capabilities:
+
+```json
+{
+  "mcpServers": {
+    "lifi": {
+      "command": "lifi-mcp",
+      "args": ["--keystore", "your-keystore", "--password", "your-password"]
+    }
+  }
+}
+```
+
+### Docker
+
+#### Running with Docker
+
+You can run the LiFi MCP server using Docker:
 
 ```bash
-lifi-mcp new-wallet --name <wallet-name> --password <wallet-password>
+docker run -i --rm ghcr.io/lifinance/lifi-mcp:latest
 ```
 
-This generates a new Ethereum wallet, saves it to the standard keystore location, and displays the wallet address.
+#### Docker Configuration with MCP
 
-### Usage with Desktop App
-
-To integrate this server with the desktop app, add the following to your app's server configuration:
+To integrate the Docker image with apps that support MCP:
 
 ```json
 {
   "mcpServers": {
     "lifi": {
-      "command": "lifi-mcp",
-      "args": ["server"]
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "ghcr.io/lifinance/lifi-mcp:latest"
+      ]
     }
   }
 }
 ```
-
-For wallet functionality, include keystore parameters:
-
-```json
-{
-  "mcpServers": {
-    "lifi": {
-      "command": "lifi-mcp",
-      "args": ["server", "--keystore", "your-keystore", "--password", "your-password"]
-    }
-  }
-}
-```
-
 
 ## License
 

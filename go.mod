@@ -4,7 +4,7 @@ go 1.23.6
 
 require (
 	github.com/ethereum/go-ethereum v1.15.5
-	github.com/mark3labs/mcp-go v0.14.1
+	github.com/mark3labs/mcp-go v0.30.1
 )
 
 require (
@@ -26,6 +26,7 @@ require (
 	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
+	github.com/spf13/cast v1.7.1 // indirect
 	github.com/supranational/blst v0.3.14 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
