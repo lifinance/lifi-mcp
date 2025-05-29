@@ -23,13 +23,13 @@ import (
 // getKeystoreDir returns the default keystore directory based on the operating system
 func getKeystoreDir() (string, error) {
 	var keystorePath string
-	
+
 	// Get home directory
 	usr, err := user.Current()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current user: %v", err)
 	}
-	
+
 	// Determine OS-specific keystore path
 	switch runtime.GOOS {
 	case "linux":
@@ -41,7 +41,7 @@ func getKeystoreDir() (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
-	
+
 	return keystorePath, nil
 }
 
@@ -52,13 +52,13 @@ func loadKeystore(keystoreName, password string) (*ecdsa.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// List files in the keystore directory to find the matching keystore
 	files, err := os.ReadDir(keystoreDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read keystore directory: %v", err)
 	}
-	
+
 	// Look for a keystore file matching the provided name
 	var keystorePath string
 	for _, file := range files {
@@ -67,23 +67,23 @@ func loadKeystore(keystoreName, password string) (*ecdsa.PrivateKey, error) {
 			break
 		}
 	}
-	
+
 	if keystorePath == "" {
 		return nil, fmt.Errorf("keystore not found with name: %s", keystoreName)
 	}
-	
+
 	// Read the keystore file
 	keystoreJSON, err := os.ReadFile(keystorePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read keystore file: %v", err)
 	}
-	
+
 	// Decrypt the key with the provided password
 	key, err := keystore.DecryptKey(keystoreJSON, password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt keystore: %v", err)
 	}
-	
+
 	return key.PrivateKey, nil
 }
 
@@ -92,7 +92,7 @@ func (s *Server) GetWalletAddress() (string, error) {
 	if s.privateKey == nil {
 		return "", errors.New("no private key loaded")
 	}
-	
+
 	publicKey := crypto.PubkeyToAddress(s.privateKey.PublicKey)
 	return publicKey.Hex(), nil
 }
@@ -104,18 +104,18 @@ func refreshChainsCache() error {
 		return fmt.Errorf("failed to fetch chains: %v", err)
 	}
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read response: %v", err)
 	}
-	
+
 	var chainData ChainData
 	err = json.Unmarshal(body, &chainData)
 	if err != nil {
 		return fmt.Errorf("failed to parse chain data: %v", err)
 	}
-	
+
 	chainsCache = chainData
 	chainsCacheInitialized = true
 	return nil
@@ -320,7 +320,7 @@ func (s *Server) getStatusHandler(ctx context.Context, request mcp.CallToolReque
 	// Build the query parameters
 	params := url.Values{}
 	params.Add("txHash", txHash)
-	
+
 	if bridge != "" {
 		params.Add("bridge", bridge)
 	}
@@ -478,7 +478,7 @@ func (s *Server) getConnectionsHandler(ctx context.Context, request mcp.CallTool
 func (s *Server) getToolsHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Get parameters (chains is an array)
 	var chains []string
-	
+
 	if chainsParam := getArrayArg(request, "chains"); chainsParam != nil {
 		chains = make([]string, len(chainsParam))
 		for i, chain := range chainsParam {
@@ -515,18 +515,18 @@ func (s *Server) getToolsHandler(ctx context.Context, request mcp.CallToolReques
 func (s *Server) getChainByIdHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Get required parameter
 	idStr := getStringArg(request, "id")
-	
+
 	if idStr == "" {
 		return nil, errors.New("ID parameter is required")
 	}
-	
+
 	// Attempt to parse the ID as an integer
 	var id int
 	_, err := fmt.Sscanf(idStr, "%d", &id)
 	if err != nil {
 		return nil, fmt.Errorf("invalid ID format. Expected integer, got: %s", idStr)
 	}
-	
+
 	// Ensure the chains are loaded
 	if !chainsCacheInitialized {
 		err := refreshChainsCache()
@@ -534,7 +534,7 @@ func (s *Server) getChainByIdHandler(ctx context.Context, request mcp.CallToolRe
 			return nil, fmt.Errorf("failed to fetch chain data: %v", err)
 		}
 	}
-	
+
 	// Look for the chain by ID
 	for _, chain := range chainsCache.Chains {
 		if chain.ID == id {
@@ -543,11 +543,11 @@ func (s *Server) getChainByIdHandler(ctx context.Context, request mcp.CallToolRe
 			if err != nil {
 				return nil, fmt.Errorf("error serializing chain data: %v", err)
 			}
-			
+
 			return mcp.NewToolResultText(string(chainData)), nil
 		}
 	}
-	
+
 	// No matching chain found
 	return nil, fmt.Errorf("no chain found with ID: %d", id)
 }
@@ -555,11 +555,11 @@ func (s *Server) getChainByIdHandler(ctx context.Context, request mcp.CallToolRe
 func (s *Server) getChainByNameHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Get required parameter
 	name := getStringArg(request, "name")
-	
+
 	if name == "" {
 		return nil, errors.New("name parameter is required")
 	}
-	
+
 	// Ensure the chains are loaded
 	if !chainsCacheInitialized {
 		err := refreshChainsCache()
@@ -567,26 +567,26 @@ func (s *Server) getChainByNameHandler(ctx context.Context, request mcp.CallTool
 			return nil, fmt.Errorf("failed to fetch chain data: %v", err)
 		}
 	}
-	
+
 	// Convert name to lowercase for case-insensitive matching
 	nameLower := strings.ToLower(name)
-	
+
 	// Look for the chain by name
 	for _, chain := range chainsCache.Chains {
 		// Try matching against name, key, or chain ID as string
 		if strings.ToLower(chain.Name) == nameLower ||
-		   strings.ToLower(chain.Key) == nameLower || 
-		   strings.ToLower(fmt.Sprintf("%d", chain.ID)) == nameLower {
+			strings.ToLower(chain.Key) == nameLower ||
+			strings.ToLower(fmt.Sprintf("%d", chain.ID)) == nameLower {
 			// Found a match, return the chain data
 			chainData, err := json.Marshal(chain)
 			if err != nil {
 				return nil, fmt.Errorf("error serializing chain data: %v", err)
 			}
-			
+
 			return mcp.NewToolResultText(string(chainData)), nil
 		}
 	}
-	
+
 	// No matching chain found
 	return nil, fmt.Errorf("no chain found matching name: %s", name)
 }
@@ -596,15 +596,15 @@ func (s *Server) getWalletAddressHandler(ctx context.Context, request mcp.CallTo
 	if err != nil {
 		return nil, fmt.Errorf("error getting wallet address: %v", err)
 	}
-	
+
 	result := map[string]string{
 		"address": address,
 	}
-	
+
 	jsonResult, err := json.Marshal(result)
 	if err != nil {
 		return nil, fmt.Errorf("error serializing result: %v", err)
 	}
-	
+
 	return mcp.NewToolResultText(string(jsonResult)), nil
 }

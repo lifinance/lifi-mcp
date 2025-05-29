@@ -76,7 +76,10 @@ The Model Context Protocol (MCP) is a protocol for AI model integration, allowin
   - Check the allowance of an ERC20 token for a specific spender
   - Parameters: `rpcUrl`, `tokenAddress`, `ownerAddress`, `spenderAddress`
 
-#### Transaction Operations
+#### Transaction Operations (Keystore Required)
+
+> **Note:** These tools are only available when the server is started with the `--keystore` flag.
+
 - **execute-quote**
   - Execute a quote transaction using the stored private key
   - Parameters: `rpcUrl`, `transactionRequest`

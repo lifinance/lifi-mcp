@@ -23,16 +23,16 @@ func NewServer(version string) *Server {
 	s := &Server{
 		version: version,
 	}
-	
+
 	// Create the MCP server
 	s.mcpServer = mcpserver.NewMCPServer(
 		"lifi-mcp",
 		version,
 	)
-	
+
 	// Register tools
 	s.registerTools()
-	
+
 	return s
 }
 
@@ -147,7 +147,10 @@ func (s *Server) registerTools() {
 		mcp.WithString("ownerAddress", mcp.Description("Token owner address"), mcp.Required()),
 		mcp.WithString("spenderAddress", mcp.Description("Spender address to check allowance for"), mcp.Required()),
 	), s.getAllowanceHandler)
+}
 
+// RegisterWalletTools registers wallet-related tools that require a keystore
+func (s *Server) RegisterWalletTools() {
 	// Wallet tools (require keystore)
 	s.mcpServer.AddTool(mcp.NewTool("get-wallet-address",
 		mcp.WithDescription("Get the wallet address from loaded keystore"),

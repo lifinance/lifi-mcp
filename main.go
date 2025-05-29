@@ -34,17 +34,20 @@ func main() {
 		if *password == "" {
 			log.Fatal("Password is required when loading a keystore")
 		}
-		
+
 		err := s.LoadKeystore(*keystoreName, *password)
 		if err != nil {
 			log.Fatalf("Failed to load keystore: %v", err)
 		}
-		
+
 		address, err := s.GetWalletAddress()
 		if err != nil {
 			log.Fatalf("Failed to get wallet address: %v", err)
 		}
-		
+
+		// Register wallet tools now that keystore is loaded
+		s.RegisterWalletTools()
+
 		log.Printf("Loaded keystore with address: %s", address)
 	}
 
