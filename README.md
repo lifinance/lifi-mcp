@@ -233,36 +233,6 @@ With keystore for transaction capabilities:
 }
 ```
 
-### Docker
-
-#### Running with Docker
-
-You can run the LiFi MCP server using Docker:
-
-```bash
-docker run -i --rm ghcr.io/lifinance/lifi-mcp:latest
-```
-
-#### Docker Configuration with MCP
-
-To integrate the Docker image with apps that support MCP:
-
-```json
-{
-  "mcpServers": {
-    "lifi": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "ghcr.io/lifinance/lifi-mcp:latest"
-      ]
-    }
-  }
-}
-```
-
 ## License
 
 MIT
