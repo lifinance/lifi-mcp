@@ -98,7 +98,7 @@ func (s *Server) GetWalletAddress() (string, error) {
 
 // refreshChainsCache fetches the latest chain data from Li.Fi API
 func refreshChainsCache() error {
-	resp, err := http.Get(fmt.Sprintf("%s/v1/chains", BaseURL))
+	resp, err := http.Get(fmt.Sprintf("%s/v1/chains?chainTypes=SVM,EVM", BaseURL))
 	if err != nil {
 		return fmt.Errorf("failed to fetch chains: %v", err)
 	}
