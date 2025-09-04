@@ -120,16 +120,9 @@ func refreshChainsCache() error {
 	return nil
 }
 
-// Helper function to get arguments from request
+// Helper function to get arguments from request - using new mcp.ParseString
 func getStringArg(request mcp.CallToolRequest, key string) string {
-	if args, ok := request.Params.Arguments.(map[string]interface{}); ok {
-		if val, exists := args[key]; exists {
-			if str, ok := val.(string); ok {
-				return str
-			}
-		}
-	}
-	return ""
+	return mcp.ParseString(request, key, "")
 }
 
 func getArrayArg(request mcp.CallToolRequest, key string) []interface{} {
@@ -144,14 +137,7 @@ func getArrayArg(request mcp.CallToolRequest, key string) []interface{} {
 }
 
 func getObjectArg(request mcp.CallToolRequest, key string) map[string]interface{} {
-	if args, ok := request.Params.Arguments.(map[string]interface{}); ok {
-		if val, exists := args[key]; exists {
-			if obj, ok := val.(map[string]interface{}); ok {
-				return obj
-			}
-		}
-	}
-	return nil
+	return mcp.ParseStringMap(request, key, nil)
 }
 
 // LiFi API handlers
@@ -508,7 +494,60 @@ func (s *Server) getToolsHandler(ctx context.Context, request mcp.CallToolReques
 		return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 	}
 
-	return mcp.NewToolResultText(string(body)), nil
+	// Parse the response to filter out unnecessary fields
+	var toolsResponse map[string]interface{}
+	if err := json.Unmarshal(body, &toolsResponse); err != nil {
+		// If parsing fails, return the raw response
+		return mcp.NewToolResultText(string(body)), nil
+	}
+
+	// Create filtered response with only key and name for bridges and exchanges
+	filteredResponse := make(map[string]interface{})
+
+	// Process bridges if present
+	if bridges, ok := toolsResponse["bridges"].([]interface{}); ok {
+		filteredBridges := make([]map[string]interface{}, 0, len(bridges))
+		for _, bridge := range bridges {
+			if bridgeMap, ok := bridge.(map[string]interface{}); ok {
+				filtered := make(map[string]interface{})
+				if key, exists := bridgeMap["key"]; exists {
+					filtered["key"] = key
+				}
+				if name, exists := bridgeMap["name"]; exists {
+					filtered["name"] = name
+				}
+				filteredBridges = append(filteredBridges, filtered)
+			}
+		}
+		filteredResponse["bridges"] = filteredBridges
+	}
+
+	// Process exchanges if present
+	if exchanges, ok := toolsResponse["exchanges"].([]interface{}); ok {
+		filteredExchanges := make([]map[string]interface{}, 0, len(exchanges))
+		for _, exchange := range exchanges {
+			if exchangeMap, ok := exchange.(map[string]interface{}); ok {
+				filtered := make(map[string]interface{})
+				if key, exists := exchangeMap["key"]; exists {
+					filtered["key"] = key
+				}
+				if name, exists := exchangeMap["name"]; exists {
+					filtered["name"] = name
+				}
+				filteredExchanges = append(filteredExchanges, filtered)
+			}
+		}
+		filteredResponse["exchanges"] = filteredExchanges
+	}
+
+	// Marshal the filtered response
+	filteredBody, err := json.Marshal(filteredResponse)
+	if err != nil {
+		// If marshaling fails, return the original response
+		return mcp.NewToolResultText(string(body)), nil
+	}
+
+	return mcp.NewToolResultText(string(filteredBody)), nil
 }
 
 func (s *Server) getChainByIdHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
