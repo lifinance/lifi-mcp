@@ -276,9 +276,10 @@ These examples demonstrate actual tool responses from the LI.FI MCP server. Use 
   "decimals": 18,
   "name": "ETH",
   "coinKey": "ETH",
-  "priceUSD": "2249.76",
-  "marketCapUSD": 272125705323,
-  "volumeUSD24H": 44976874733,
+  "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/logo.png",
+  "priceUSD": "2237.76",
+  "marketCapUSD": 269965295371,
+  "volumeUSD24H": 43694691058,
   "tags": ["major_asset"]
 }
 ```
@@ -303,13 +304,19 @@ These examples demonstrate actual tool responses from the LI.FI MCP server. Use 
       "chainId": 1,
       "symbol": "ETH",
       "decimals": 18,
-      "priceUSD": "2249.76"
+      "priceUSD": "2237.76"
     },
     "amount": "121970296389612",
     "amountUsd": "0.2744"
   },
   "limit": {
-    "token": { "symbol": "ETH", "decimals": 18 },
+    "token": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "chainId": 1,
+      "symbol": "ETH",
+      "decimals": 18,
+      "priceUSD": "2237.76"
+    },
     "amount": "22224592845459071",
     "amountUsd": "50.0000"
   },
