@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -107,8 +108,10 @@ func (s *Server) refreshChainsCache(ctx context.Context) error {
 		return fmt.Errorf("failed to parse chain data: %v", err)
 	}
 
+	chainsCacheMu.Lock()
 	chainsCache = chainData
 	chainsCacheInitialized = true
+	chainsCacheMu.Unlock()
 	return nil
 }
 
@@ -303,12 +306,19 @@ func (s *Server) getChainsHandler(ctx context.Context, request mcp.CallToolReque
 	chainTypes := getStringArg(request, "chainTypes")
 
 	// Ensure the chains are loaded
-	if !chainsCacheInitialized {
+	chainsCacheMu.RLock()
+	initialized := chainsCacheInitialized
+	chainsCacheMu.RUnlock()
+
+	if !initialized {
 		err := s.refreshChainsCache(ctx)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to fetch chain data: %v", err)), nil
 		}
 	}
+
+	chainsCacheMu.RLock()
+	defer chainsCacheMu.RUnlock()
 
 	// If no chain types filter is specified, return all chains
 	if chainTypes == "" {
@@ -440,8 +450,7 @@ func (s *Server) getToolsHandler(ctx context.Context, request mcp.CallToolReques
 	// Parse the response to filter out unnecessary fields
 	var toolsResponse map[string]interface{}
 	if err := json.Unmarshal(body, &toolsResponse); err != nil {
-		// If parsing fails, return the raw response
-		return mcp.NewToolResultText(string(body)), nil
+		return mcp.NewToolResultError(fmt.Sprintf("failed to parse tools response: %v", err)), nil
 	}
 
 	// Create filtered response with only key and name for bridges and exchanges
@@ -486,8 +495,7 @@ func (s *Server) getToolsHandler(ctx context.Context, request mcp.CallToolReques
 	// Marshal the filtered response
 	filteredBody, err := json.Marshal(filteredResponse)
 	if err != nil {
-		// If marshaling fails, return the original response
-		return mcp.NewToolResultText(string(body)), nil
+		return mcp.NewToolResultError(fmt.Sprintf("failed to serialize filtered tools response: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(filteredBody)), nil
@@ -509,12 +517,19 @@ func (s *Server) getChainByIdHandler(ctx context.Context, request mcp.CallToolRe
 	}
 
 	// Ensure the chains are loaded
-	if !chainsCacheInitialized {
+	chainsCacheMu.RLock()
+	initialized := chainsCacheInitialized
+	chainsCacheMu.RUnlock()
+
+	if !initialized {
 		err := s.refreshChainsCache(ctx)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to fetch chain data: %v", err)), nil
 		}
 	}
+
+	chainsCacheMu.RLock()
+	defer chainsCacheMu.RUnlock()
 
 	// Look for the chain by ID
 	for _, chain := range chainsCache.Chains {
@@ -542,12 +557,19 @@ func (s *Server) getChainByNameHandler(ctx context.Context, request mcp.CallTool
 	}
 
 	// Ensure the chains are loaded
-	if !chainsCacheInitialized {
+	chainsCacheMu.RLock()
+	initialized := chainsCacheInitialized
+	chainsCacheMu.RUnlock()
+
+	if !initialized {
 		err := s.refreshChainsCache(ctx)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to fetch chain data: %v", err)), nil
 		}
 	}
+
+	chainsCacheMu.RLock()
+	defer chainsCacheMu.RUnlock()
 
 	// Convert name to lowercase for case-insensitive matching
 	nameLower := strings.ToLower(name)
@@ -733,8 +755,13 @@ func (s *Server) getGasSuggestionHandler(ctx context.Context, request mcp.CallTo
 		return mcp.NewToolResultError("chainId parameter is required"), nil
 	}
 
-	// Build the request URL
-	requestURL := fmt.Sprintf("%s/v1/gas/suggestion/%s", BaseURL, chainId)
+	// Validate chainId is numeric to prevent path injection
+	if _, err := strconv.Atoi(chainId); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("chainId must be numeric, got: %s", chainId)), nil
+	}
+
+	// Build the request URL with path escaping for safety
+	requestURL := fmt.Sprintf("%s/v1/gas/suggestion/%s", BaseURL, url.PathEscape(chainId))
 
 	// Make the request
 	body, err := s.httpClient.Get(ctx, requestURL)

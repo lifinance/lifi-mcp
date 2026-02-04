@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/ecdsa"
+	"sync"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	mcpserver "github.com/mark3labs/mcp-go/server"
@@ -278,9 +279,12 @@ type Token struct {
 	Name     string `json:"name"`
 }
 
-// Cache for chain data
-var chainsCache ChainData
-var chainsCacheInitialized bool = false
+// Cache for chain data with mutex protection
+var (
+	chainsCache            ChainData
+	chainsCacheInitialized bool
+	chainsCacheMu          sync.RWMutex
+)
 
 // ERC20 ABI for token interactions
 const ERC20ABI = `[

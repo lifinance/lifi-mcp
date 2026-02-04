@@ -74,39 +74,51 @@ func getTokenInfo(ctx context.Context, client *ethclient.Client, tokenAddress st
 // getNativeTokenInfo returns the native token symbol and decimals for a given chain ID
 func (s *Server) getNativeTokenInfo(ctx context.Context, chainID *big.Int) (string, int, error) {
 	// Initialize chains cache if not already done
-	if !chainsCacheInitialized {
+	chainsCacheMu.RLock()
+	initialized := chainsCacheInitialized
+	chainsCacheMu.RUnlock()
+
+	if !initialized {
 		err := s.refreshChainsCache(ctx)
 		if err != nil {
-			return "", 18, err
+			return "", 0, err
 		}
 	}
 
+	chainsCacheMu.RLock()
 	// Look for the chain in the cache
 	chainIDInt := int(chainID.Int64())
 	for _, chain := range chainsCache.Chains {
 		if chain.ID == chainIDInt {
 			// Some chains use nativeToken, others use nativeCurrency
 			if chain.NativeToken.Symbol != "" {
+				chainsCacheMu.RUnlock()
 				return chain.NativeToken.Symbol, chain.NativeToken.Decimals, nil
 			}
 			if chain.NativeCurrency.Symbol != "" {
+				chainsCacheMu.RUnlock()
 				return chain.NativeCurrency.Symbol, chain.NativeCurrency.Decimals, nil
 			}
 			// If neither is available, try getting from metamask
 			if chain.Metamask.ChainName != "" {
 				symbolParts := strings.Split(chain.Metamask.ChainName, " ")
 				if len(symbolParts) > 0 {
+					chainsCacheMu.RUnlock()
 					return symbolParts[0], 18, nil
 				}
 			}
 		}
 	}
+	chainsCacheMu.RUnlock()
 
 	// If chain not found in cache, try refreshing the cache once
 	err := s.refreshChainsCache(ctx)
 	if err != nil {
-		return "", 18, err
+		return "", 0, err
 	}
+
+	chainsCacheMu.RLock()
+	defer chainsCacheMu.RUnlock()
 
 	// Look again after refreshing
 	for _, chain := range chainsCache.Chains {
@@ -127,7 +139,7 @@ func (s *Server) getNativeTokenInfo(ctx context.Context, chainID *big.Int) (stri
 		}
 	}
 
-	return "", 18, fmt.Errorf("chain ID %s not found in Li.Fi API", chainID.String())
+	return "", 0, fmt.Errorf("chain ID %s not found in Li.Fi API", chainID.String())
 }
 
 // resolveRpcUrl resolves an RPC URL from a chain identifier.
@@ -146,11 +158,18 @@ func (s *Server) resolveRpcUrl(ctx context.Context, chain, rpcUrl string) (strin
 	}
 
 	// Initialize chains cache if not already done
-	if !chainsCacheInitialized {
+	chainsCacheMu.RLock()
+	initialized := chainsCacheInitialized
+	chainsCacheMu.RUnlock()
+
+	if !initialized {
 		if err := s.refreshChainsCache(ctx); err != nil {
 			return "", fmt.Errorf("failed to load chain data: %v", err)
 		}
 	}
+
+	chainsCacheMu.RLock()
+	defer chainsCacheMu.RUnlock()
 
 	// Try to parse as numeric chain ID first
 	chainID, err := strconv.Atoi(chain)
@@ -204,19 +223,38 @@ func (s *Server) executeTransactionRequest(ctx context.Context, txRequest map[st
 		return mcp.NewToolResultError(fmt.Sprintf("failed to get chain ID: %v", err)), nil
 	}
 
-	// Get and validate transaction parameters
-	valuehex, _ := txRequest["value"].(string)
-	tohex, _ := txRequest["to"].(string)
-	datahex, _ := txRequest["data"].(string)
-	fromhex, _ := txRequest["from"].(string)
+	// Get and validate transaction parameters with proper type checking
+	var valuehex, tohex, datahex, fromhex string
+	var ok bool
 
-	// Validate required transaction parameters
+	if v, exists := txRequest["to"]; exists {
+		if tohex, ok = v.(string); !ok {
+			return mcp.NewToolResultError("transaction 'to' must be a string"), nil
+		}
+	}
 	if tohex == "" {
 		return mcp.NewToolResultError("transaction 'to' address is required in transactionRequest"), nil
 	}
 
+	if v, exists := txRequest["data"]; exists {
+		if datahex, ok = v.(string); !ok {
+			return mcp.NewToolResultError("transaction 'data' must be a string"), nil
+		}
+	}
 	if datahex == "" {
 		return mcp.NewToolResultError("transaction 'data' is required in transactionRequest"), nil
+	}
+
+	if v, exists := txRequest["value"]; exists {
+		if valuehex, ok = v.(string); !ok {
+			return mcp.NewToolResultError("transaction 'value' must be a string"), nil
+		}
+	}
+
+	if v, exists := txRequest["from"]; exists {
+		if fromhex, ok = v.(string); !ok {
+			return mcp.NewToolResultError("transaction 'from' must be a string"), nil
+		}
 	}
 
 	// Get the wallet address

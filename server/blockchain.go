@@ -59,16 +59,13 @@ func (s *Server) getNativeTokenBalanceHandler(ctx context.Context, request mcp.C
 	// Get chain ID to determine which token symbol to display
 	chainID, err := client.ChainID(ctx)
 	if err != nil {
-		// If we can't get chain ID, we'll just use "Native Token" as the symbol
-		chainID = big.NewInt(0)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get chain ID: %v", err)), nil
 	}
 
 	// Get token symbol from chain data
 	symbol, decimals, err := s.getNativeTokenInfo(ctx, chainID)
 	if err != nil {
-		// Fall back to a generic symbol if we can't get chain data
-		symbol = "Native Token"
-		decimals = 18 // Most chains use 18 decimals
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get native token info: %v", err)), nil
 	}
 
 	// Format the result
@@ -159,15 +156,13 @@ func (s *Server) getTokenBalanceHandler(ctx context.Context, request mcp.CallToo
 	// Get token information
 	tokenSymbol, tokenDecimals, err := getTokenInfo(ctx, client, tokenAddress)
 	if err != nil {
-		// If we can't get token info, just use defaults
-		tokenSymbol = "Unknown"
-		tokenDecimals = 18
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get token info for %s: %v", tokenAddress, err)), nil
 	}
 
 	// Get chain ID to include in the response
 	chainID, err := client.ChainID(ctx)
 	if err != nil {
-		chainID = big.NewInt(0)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get chain ID: %v", err)), nil
 	}
 
 	// Format the result
@@ -280,15 +275,13 @@ func (s *Server) getAllowanceHandler(ctx context.Context, request mcp.CallToolRe
 	// Get token information for better UX in response
 	tokenSymbol, tokenDecimals, err := getTokenInfo(ctx, client, tokenAddress)
 	if err != nil {
-		// If we can't get token info, just use defaults
-		tokenSymbol = "Unknown"
-		tokenDecimals = 18
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get token info for %s: %v", tokenAddress, err)), nil
 	}
 
 	// Get chain ID to include in the response
 	chainID, err := client.ChainID(ctx)
 	if err != nil {
-		chainID = big.NewInt(0)
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get chain ID: %v", err)), nil
 	}
 
 	// Format the response
@@ -408,9 +401,7 @@ func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRe
 	// Get token information for better UX in response
 	tokenSymbol, tokenDecimals, err := getTokenInfo(ctx, client, tokenAddress)
 	if err != nil {
-		// If we can't get token info, just use defaults
-		tokenSymbol = "Unknown"
-		tokenDecimals = 18
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get token info for %s: %v", tokenAddress, err)), nil
 	}
 
 	// Convert token address to common.Address once and reuse
@@ -635,9 +626,7 @@ func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolR
 	// Get token information for better UX in response
 	tokenSymbol, tokenDecimals, err := getTokenInfo(ctx, client, tokenAddress)
 	if err != nil {
-		// If we can't get token info, just use defaults
-		tokenSymbol = "Unknown"
-		tokenDecimals = 18
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get token info for %s: %v", tokenAddress, err)), nil
 	}
 
 	// Convert token address to common.Address once and reuse
@@ -886,9 +875,7 @@ func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallTool
 	// Get native token info for the response
 	tokenSymbol, tokenDecimals, err := s.getNativeTokenInfo(ctx, chainID)
 	if err != nil {
-		// Default values if we can't get chain info
-		tokenSymbol = "Native Token"
-		tokenDecimals = 18
+		return mcp.NewToolResultError(fmt.Sprintf("failed to get native token info: %v", err)), nil
 	}
 
 	// Check balance before transfer
