@@ -411,8 +411,11 @@ These examples demonstrate actual tool responses from the LI.FI MCP server. Use 
   },
   "transactionRequest": {
     "to": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+    "data": "0x736eac0b5a28cb9d...", // Truncated - full calldata in actual response
     "value": "0x2386f26fc10000",
+    "from": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
     "chainId": 1,
+    "gasPrice": "0xa7a9b10",
     "gasLimit": "0x778a1"
   }
 }
@@ -421,7 +424,7 @@ These examples demonstrate actual tool responses from the LI.FI MCP server. Use 
 > **Key Points:**
 > - `estimate.toAmount`: Expected USDC output (22.39 USDC with 6 decimals)
 > - `estimate.toAmountMin`: Minimum after slippage (21.72 USDC)
-> - `transactionRequest`: Ready-to-sign transaction data
+> - `transactionRequest.data`: Encoded calldata for the swap contract (required for execution)
 
 ### Cross-Chain Swap Quote (ETH on Ethereum → USDC on Base)
 
@@ -476,7 +479,12 @@ These examples demonstrate actual tool responses from the LI.FI MCP server. Use 
   ],
   "transactionRequest": {
     "to": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
-    "chainId": 1
+    "data": "0x3110c7b900000000...", // Truncated - full calldata in actual response
+    "value": "0x2386f26fc10000",
+    "from": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "chainId": 1,
+    "gasPrice": "0xa7a9b10",
+    "gasLimit": "0x3fee7"
   }
 }
 ```
@@ -484,7 +492,7 @@ These examples demonstrate actual tool responses from the LI.FI MCP server. Use 
 > **Key Points:**
 > - `executionDuration`: ~47 seconds for cross-chain transfer
 > - `includedSteps`: Shows the route (fee collection → bridge via NearIntents)
-> - Cross-chain quotes include bridge-specific fees
+> - `transactionRequest.data`: Essential calldata encoding the bridge parameters
 
 </details>
 
