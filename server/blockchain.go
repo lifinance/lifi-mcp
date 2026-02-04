@@ -19,13 +19,21 @@ import (
 // Blockchain interaction handlers
 
 func (s *Server) getNativeTokenBalanceHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	// Get required parameters
+	// Get parameters
+	chain := getStringArg(request, "chain")
 	rpcUrl := getStringArg(request, "rpcUrl")
 	address := getStringArg(request, "address")
 
-	if rpcUrl == "" || address == "" {
-		return mcp.NewToolResultError("both rpcUrl and address parameters are required"), nil
+	if address == "" {
+		return mcp.NewToolResultError("address parameter is required"), nil
 	}
+
+	// Resolve RPC URL from chain or use provided rpcUrl
+	resolvedRpcUrl, err := s.resolveRpcUrl(ctx, chain, rpcUrl)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	rpcUrl = resolvedRpcUrl
 
 	// Validate address format
 	if !common.IsHexAddress(address) {
@@ -56,7 +64,7 @@ func (s *Server) getNativeTokenBalanceHandler(ctx context.Context, request mcp.C
 	}
 
 	// Get token symbol from chain data
-	symbol, decimals, err := getNativeTokenInfo(chainID)
+	symbol, decimals, err := s.getNativeTokenInfo(ctx, chainID)
 	if err != nil {
 		// Fall back to a generic symbol if we can't get chain data
 		symbol = "Native Token"
@@ -81,14 +89,22 @@ func (s *Server) getNativeTokenBalanceHandler(ctx context.Context, request mcp.C
 }
 
 func (s *Server) getTokenBalanceHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	// Get required parameters
+	// Get parameters
+	chain := getStringArg(request, "chain")
 	rpcUrl := getStringArg(request, "rpcUrl")
 	tokenAddress := getStringArg(request, "tokenAddress")
 	walletAddress := getStringArg(request, "walletAddress")
 
-	if rpcUrl == "" || tokenAddress == "" || walletAddress == "" {
-		return mcp.NewToolResultError("rpcUrl, tokenAddress, and walletAddress parameters are required"), nil
+	if tokenAddress == "" || walletAddress == "" {
+		return mcp.NewToolResultError("tokenAddress and walletAddress parameters are required"), nil
 	}
+
+	// Resolve RPC URL from chain or use provided rpcUrl
+	resolvedRpcUrl, err := s.resolveRpcUrl(ctx, chain, rpcUrl)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	rpcUrl = resolvedRpcUrl
 
 	// Validate addresses
 	if !common.IsHexAddress(tokenAddress) {
@@ -173,16 +189,19 @@ func (s *Server) getTokenBalanceHandler(ctx context.Context, request mcp.CallToo
 }
 
 func (s *Server) getAllowanceHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	// Get required parameters
+	// Get parameters
+	chain := getStringArg(request, "chain")
 	rpcUrl := getStringArg(request, "rpcUrl")
 	tokenAddress := getStringArg(request, "tokenAddress")
 	ownerAddress := getStringArg(request, "ownerAddress")
 	spenderAddress := getStringArg(request, "spenderAddress")
 
-	// Validate required parameters individually for better error messages
-	if rpcUrl == "" {
-		return mcp.NewToolResultError("RPC URL is required"), nil
+	// Resolve RPC URL from chain or use provided rpcUrl
+	resolvedRpcUrl, err := s.resolveRpcUrl(ctx, chain, rpcUrl)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
+	rpcUrl = resolvedRpcUrl
 
 	if tokenAddress == "" {
 		return mcp.NewToolResultError("token address is required"), nil
@@ -297,10 +316,14 @@ func (s *Server) executeQuoteHandler(ctx context.Context, request mcp.CallToolRe
 		return mcp.NewToolResultError("no private key loaded. Please start the server with a keystore"), nil
 	}
 
-	// Get RPC URL (required)
+	// Get parameters
+	chain := getStringArg(request, "chain")
 	rpcUrl := getStringArg(request, "rpcUrl")
-	if rpcUrl == "" {
-		return mcp.NewToolResultError("RPC URL is required"), nil
+
+	// Resolve RPC URL from chain or use provided rpcUrl
+	resolvedRpcUrl, err := s.resolveRpcUrl(ctx, chain, rpcUrl)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	// Get transactionRequest object (required)
@@ -310,7 +333,7 @@ func (s *Server) executeQuoteHandler(ctx context.Context, request mcp.CallToolRe
 	}
 
 	// Execute the transaction
-	return s.executeTransactionRequest(ctx, txRequest, rpcUrl)
+	return s.executeTransactionRequest(ctx, txRequest, resolvedRpcUrl)
 }
 
 func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -319,16 +342,19 @@ func (s *Server) approveTokenHandler(ctx context.Context, request mcp.CallToolRe
 		return mcp.NewToolResultError("no private key loaded. Please start the server with a keystore"), nil
 	}
 
-	// Get required parameters
+	// Get parameters
+	chain := getStringArg(request, "chain")
 	rpcUrl := getStringArg(request, "rpcUrl")
 	tokenAddress := getStringArg(request, "tokenAddress")
 	spenderAddress := getStringArg(request, "spenderAddress")
 	amountStr := getStringArg(request, "amount")
 
-	// Validate required parameters individually for better error messages
-	if rpcUrl == "" {
-		return mcp.NewToolResultError("RPC URL is required"), nil
+	// Resolve RPC URL from chain or use provided rpcUrl
+	resolvedRpcUrl, err := s.resolveRpcUrl(ctx, chain, rpcUrl)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
+	rpcUrl = resolvedRpcUrl
 
 	if tokenAddress == "" {
 		return mcp.NewToolResultError("token address is required"), nil
@@ -543,16 +569,19 @@ func (s *Server) transferTokenHandler(ctx context.Context, request mcp.CallToolR
 		return mcp.NewToolResultError("no private key loaded. Please start the server with a keystore"), nil
 	}
 
-	// Get required parameters
+	// Get parameters
+	chain := getStringArg(request, "chain")
 	rpcUrl := getStringArg(request, "rpcUrl")
 	tokenAddress := getStringArg(request, "tokenAddress")
 	recipientAddress := getStringArg(request, "to")
 	amountStr := getStringArg(request, "amount")
 
-	// Validate required parameters individually for better error messages
-	if rpcUrl == "" {
-		return mcp.NewToolResultError("RPC URL is required"), nil
+	// Resolve RPC URL from chain or use provided rpcUrl
+	resolvedRpcUrl, err := s.resolveRpcUrl(ctx, chain, rpcUrl)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
+	rpcUrl = resolvedRpcUrl
 
 	if tokenAddress == "" {
 		return mcp.NewToolResultError("token address is required"), nil
@@ -805,15 +834,18 @@ func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallTool
 		return mcp.NewToolResultError("no private key loaded. Please start the server with a keystore"), nil
 	}
 
-	// Get required parameters
+	// Get parameters
+	chain := getStringArg(request, "chain")
 	rpcUrl := getStringArg(request, "rpcUrl")
 	recipientAddress := getStringArg(request, "to")
 	amountStr := getStringArg(request, "amount")
 
-	// Validate required parameters individually for better error messages
-	if rpcUrl == "" {
-		return mcp.NewToolResultError("RPC URL is required"), nil
+	// Resolve RPC URL from chain or use provided rpcUrl
+	resolvedRpcUrl, err := s.resolveRpcUrl(ctx, chain, rpcUrl)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
+	rpcUrl = resolvedRpcUrl
 
 	if recipientAddress == "" {
 		return mcp.NewToolResultError("recipient address (to) is required"), nil
@@ -852,7 +884,7 @@ func (s *Server) transferNativeHandler(ctx context.Context, request mcp.CallTool
 	walletAddress := crypto.PubkeyToAddress(s.privateKey.PublicKey)
 
 	// Get native token info for the response
-	tokenSymbol, tokenDecimals, err := getNativeTokenInfo(chainID)
+	tokenSymbol, tokenDecimals, err := s.getNativeTokenInfo(ctx, chainID)
 	if err != nil {
 		// Default values if we can't get chain info
 		tokenSymbol = "Native Token"

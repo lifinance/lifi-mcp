@@ -17,6 +17,7 @@ func main() {
 	var (
 		keystoreName = flag.String("keystore", "", "Name of the keystore file to load")
 		password     = flag.String("password", "", "Password for the keystore file")
+		apiKeyFlag   = flag.String("api-key", "", "LI.FI API key (overrides LIFI_API_KEY env var)")
 		showVersion  = flag.Bool("version", false, "Show version information")
 	)
 	flag.Parse()
@@ -26,8 +27,21 @@ func main() {
 		return
 	}
 
+	// Resolve API key: flag overrides env var
+	apiKey := os.Getenv("LIFI_API_KEY")
+	if *apiKeyFlag != "" {
+		apiKey = *apiKeyFlag
+	}
+
 	// Create the server
-	s := server.NewServer(version)
+	s := server.NewServer(version, apiKey)
+
+	// Log API key status
+	if apiKey != "" {
+		log.Printf("LI.FI API key configured")
+	} else {
+		log.Printf("No LI.FI API key - using default rate limits (200 req/2hr)")
+	}
 
 	// Load keystore if provided
 	if *keystoreName != "" {

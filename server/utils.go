@@ -72,10 +72,10 @@ func getTokenInfo(ctx context.Context, client *ethclient.Client, tokenAddress st
 }
 
 // getNativeTokenInfo returns the native token symbol and decimals for a given chain ID
-func getNativeTokenInfo(chainID *big.Int) (string, int, error) {
+func (s *Server) getNativeTokenInfo(ctx context.Context, chainID *big.Int) (string, int, error) {
 	// Initialize chains cache if not already done
 	if !chainsCacheInitialized {
-		err := refreshChainsCache()
+		err := s.refreshChainsCache(ctx)
 		if err != nil {
 			return "", 18, err
 		}
@@ -103,7 +103,7 @@ func getNativeTokenInfo(chainID *big.Int) (string, int, error) {
 	}
 
 	// If chain not found in cache, try refreshing the cache once
-	err := refreshChainsCache()
+	err := s.refreshChainsCache(ctx)
 	if err != nil {
 		return "", 18, err
 	}
@@ -128,6 +128,59 @@ func getNativeTokenInfo(chainID *big.Int) (string, int, error) {
 	}
 
 	return "", 18, fmt.Errorf("chain ID %s not found in Li.Fi API", chainID.String())
+}
+
+// resolveRpcUrl resolves an RPC URL from a chain identifier.
+// If rpcUrl is provided, it's returned directly.
+// If only chain is provided, looks up the RPC URL from chain data.
+// The chain parameter can be a numeric ID (e.g., "1") or a name (e.g., "ethereum").
+func (s *Server) resolveRpcUrl(ctx context.Context, chain, rpcUrl string) (string, error) {
+	// If explicit RPC URL provided, use it
+	if rpcUrl != "" {
+		return rpcUrl, nil
+	}
+
+	// Chain is required if rpcUrl is not provided
+	if chain == "" {
+		return "", fmt.Errorf("either 'chain' or 'rpcUrl' parameter is required")
+	}
+
+	// Initialize chains cache if not already done
+	if !chainsCacheInitialized {
+		if err := s.refreshChainsCache(ctx); err != nil {
+			return "", fmt.Errorf("failed to load chain data: %v", err)
+		}
+	}
+
+	// Try to parse as numeric chain ID first
+	chainID, err := strconv.Atoi(chain)
+	if err == nil {
+		// It's a numeric ID
+		for _, c := range chainsCache.Chains {
+			if c.ID == chainID {
+				if len(c.Metamask.RpcUrls) > 0 {
+					return c.Metamask.RpcUrls[0], nil
+				}
+				return "", fmt.Errorf("chain %d has no RPC URLs configured", chainID)
+			}
+		}
+		return "", fmt.Errorf("chain ID %d not found", chainID)
+	}
+
+	// Try to match by name or key (case-insensitive)
+	chainLower := strings.ToLower(chain)
+	for _, c := range chainsCache.Chains {
+		if strings.ToLower(c.Name) == chainLower ||
+			strings.ToLower(c.Key) == chainLower ||
+			strings.ToLower(c.Metamask.ChainName) == chainLower {
+			if len(c.Metamask.RpcUrls) > 0 {
+				return c.Metamask.RpcUrls[0], nil
+			}
+			return "", fmt.Errorf("chain '%s' has no RPC URLs configured", chain)
+		}
+	}
+
+	return "", fmt.Errorf("chain '%s' not found", chain)
 }
 
 // executeTransactionRequest handles execution of a transaction request object

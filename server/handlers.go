@@ -5,8 +5,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"os/user"
@@ -97,16 +95,10 @@ func (s *Server) GetWalletAddress() (string, error) {
 }
 
 // refreshChainsCache fetches the latest chain data from Li.Fi API
-func refreshChainsCache() error {
-	resp, err := http.Get(fmt.Sprintf("%s/v1/chains?chainTypes=SVM,EVM", BaseURL))
+func (s *Server) refreshChainsCache(ctx context.Context) error {
+	body, err := s.httpClient.Get(ctx, fmt.Sprintf("%s/v1/chains?chainTypes=SVM,EVM", BaseURL))
 	if err != nil {
 		return fmt.Errorf("failed to fetch chains: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response: %v", err)
 	}
 
 	var chainData ChainData
@@ -165,16 +157,9 @@ func (s *Server) getTokensHandler(ctx context.Context, request mcp.CallToolReque
 	}
 
 	// Make the request
-	resp, err := http.Get(requestURL)
+	body, err := s.httpClient.Get(ctx, requestURL)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
-	}
-	defer resp.Body.Close()
-
-	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(body)), nil
@@ -197,16 +182,9 @@ func (s *Server) getTokenHandler(ctx context.Context, request mcp.CallToolReques
 	requestURL := fmt.Sprintf("%s/v1/token?%s", BaseURL, params.Encode())
 
 	// Make the request
-	resp, err := http.Get(requestURL)
+	body, err := s.httpClient.Get(ctx, requestURL)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
-	}
-	defer resp.Body.Close()
-
-	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(body)), nil
@@ -275,16 +253,9 @@ func (s *Server) getQuoteHandler(ctx context.Context, request mcp.CallToolReques
 	requestURL := fmt.Sprintf("%s/v1/quote?%s", BaseURL, params.Encode())
 
 	// Make the request
-	resp, err := http.Get(requestURL)
+	body, err := s.httpClient.Get(ctx, requestURL)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
-	}
-	defer resp.Body.Close()
-
-	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(body)), nil
@@ -320,16 +291,9 @@ func (s *Server) getStatusHandler(ctx context.Context, request mcp.CallToolReque
 	requestURL := fmt.Sprintf("%s/v1/status?%s", BaseURL, params.Encode())
 
 	// Make the request
-	resp, err := http.Get(requestURL)
+	body, err := s.httpClient.Get(ctx, requestURL)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
-	}
-	defer resp.Body.Close()
-
-	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(body)), nil
@@ -340,7 +304,7 @@ func (s *Server) getChainsHandler(ctx context.Context, request mcp.CallToolReque
 
 	// Ensure the chains are loaded
 	if !chainsCacheInitialized {
-		err := refreshChainsCache()
+		err := s.refreshChainsCache(ctx)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to fetch chain data: %v", err)), nil
 		}
@@ -382,16 +346,9 @@ func (s *Server) getChainsHandler(ctx context.Context, request mcp.CallToolReque
 		requestURL := fmt.Sprintf("%s/v1/chains?%s", BaseURL, params.Encode())
 
 		// Make the request
-		resp, err := http.Get(requestURL)
+		body, err := s.httpClient.Get(ctx, requestURL)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
-		}
-		defer resp.Body.Close()
-
-		// Read the response body
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 		}
 
 		return mcp.NewToolResultText(string(body)), nil
@@ -445,16 +402,9 @@ func (s *Server) getConnectionsHandler(ctx context.Context, request mcp.CallTool
 	requestURL := fmt.Sprintf("%s/v1/connections?%s", BaseURL, params.Encode())
 
 	// Make the request
-	resp, err := http.Get(requestURL)
+	body, err := s.httpClient.Get(ctx, requestURL)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
-	}
-	defer resp.Body.Close()
-
-	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 	}
 
 	return mcp.NewToolResultText(string(body)), nil
@@ -482,16 +432,9 @@ func (s *Server) getToolsHandler(ctx context.Context, request mcp.CallToolReques
 	requestURL := fmt.Sprintf("%s/v1/tools?%s", BaseURL, params.Encode())
 
 	// Make the request
-	resp, err := http.Get(requestURL)
+	body, err := s.httpClient.Get(ctx, requestURL)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
-	}
-	defer resp.Body.Close()
-
-	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("error reading response: %v", err)), nil
 	}
 
 	// Parse the response to filter out unnecessary fields
@@ -567,7 +510,7 @@ func (s *Server) getChainByIdHandler(ctx context.Context, request mcp.CallToolRe
 
 	// Ensure the chains are loaded
 	if !chainsCacheInitialized {
-		err := refreshChainsCache()
+		err := s.refreshChainsCache(ctx)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to fetch chain data: %v", err)), nil
 		}
@@ -600,7 +543,7 @@ func (s *Server) getChainByNameHandler(ctx context.Context, request mcp.CallTool
 
 	// Ensure the chains are loaded
 	if !chainsCacheInitialized {
-		err := refreshChainsCache()
+		err := s.refreshChainsCache(ctx)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to fetch chain data: %v", err)), nil
 		}
@@ -627,6 +570,193 @@ func (s *Server) getChainByNameHandler(ctx context.Context, request mcp.CallTool
 
 	// No matching chain found
 	return mcp.NewToolResultError(fmt.Sprintf("no chain found matching name: %s", name)), nil
+}
+
+func (s *Server) getRoutesHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Get all required parameters
+	fromChainId := getStringArg(request, "fromChainId")
+	toChainId := getStringArg(request, "toChainId")
+	fromTokenAddress := getStringArg(request, "fromTokenAddress")
+	toTokenAddress := getStringArg(request, "toTokenAddress")
+	fromAddress := getStringArg(request, "fromAddress")
+	fromAmount := getStringArg(request, "fromAmount")
+
+	// Required parameters check
+	if fromChainId == "" || toChainId == "" || fromTokenAddress == "" || toTokenAddress == "" || fromAddress == "" || fromAmount == "" {
+		return mcp.NewToolResultError("required parameters: fromChainId, toChainId, fromTokenAddress, toTokenAddress, fromAddress, fromAmount"), nil
+	}
+
+	// Get optional parameters
+	toAddress := getStringArg(request, "toAddress")
+	slippage := getStringArg(request, "slippage")
+	order := getStringArg(request, "order")
+
+	// Build the request body
+	requestBody := map[string]interface{}{
+		"fromChainId":      fromChainId,
+		"toChainId":        toChainId,
+		"fromTokenAddress": fromTokenAddress,
+		"toTokenAddress":   toTokenAddress,
+		"fromAddress":      fromAddress,
+		"fromAmount":       fromAmount,
+	}
+
+	if toAddress != "" {
+		requestBody["toAddress"] = toAddress
+	}
+	if slippage != "" {
+		requestBody["slippage"] = slippage
+	}
+	if order != "" {
+		requestBody["options"] = map[string]interface{}{
+			"order": order,
+		}
+	}
+
+	// Marshal the request body
+	jsonBody, err := json.Marshal(requestBody)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal request body: %v", err)), nil
+	}
+
+	// Build the request URL
+	requestURL := fmt.Sprintf("%s/v1/advanced/routes", BaseURL)
+
+	// Make the POST request
+	body, err := s.httpClient.Post(ctx, requestURL, jsonBody)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(body)), nil
+}
+
+func (s *Server) getQuoteWithCallsHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Get all required parameters
+	fromChain := getStringArg(request, "fromChain")
+	toChain := getStringArg(request, "toChain")
+	fromToken := getStringArg(request, "fromToken")
+	toToken := getStringArg(request, "toToken")
+	fromAddress := getStringArg(request, "fromAddress")
+	fromAmount := getStringArg(request, "fromAmount")
+	contractCalls := getArrayArg(request, "contractCalls")
+
+	// Required parameters check
+	if fromChain == "" || toChain == "" || fromToken == "" || toToken == "" || fromAddress == "" || fromAmount == "" {
+		return mcp.NewToolResultError("required parameters: fromChain, toChain, fromToken, toToken, fromAddress, fromAmount"), nil
+	}
+
+	if contractCalls == nil || len(contractCalls) == 0 {
+		return mcp.NewToolResultError("contractCalls array is required and must not be empty"), nil
+	}
+
+	// Get optional parameters
+	slippage := getStringArg(request, "slippage")
+
+	// Build the request body
+	requestBody := map[string]interface{}{
+		"fromChain":     fromChain,
+		"toChain":       toChain,
+		"fromToken":     fromToken,
+		"toToken":       toToken,
+		"fromAddress":   fromAddress,
+		"fromAmount":    fromAmount,
+		"contractCalls": contractCalls,
+	}
+
+	if slippage != "" {
+		requestBody["slippage"] = slippage
+	}
+
+	// Marshal the request body
+	jsonBody, err := json.Marshal(requestBody)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal request body: %v", err)), nil
+	}
+
+	// Build the request URL
+	requestURL := fmt.Sprintf("%s/v1/quote/contractCalls", BaseURL)
+
+	// Make the POST request
+	body, err := s.httpClient.Post(ctx, requestURL, jsonBody)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(body)), nil
+}
+
+func (s *Server) getStepTransactionHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Get the step object
+	step := getObjectArg(request, "step")
+
+	if step == nil {
+		return mcp.NewToolResultError("step object is required"), nil
+	}
+
+	// Marshal the step object for the request body
+	jsonBody, err := json.Marshal(step)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal step object: %v", err)), nil
+	}
+
+	// Build the request URL
+	requestURL := fmt.Sprintf("%s/v1/advanced/stepTransaction", BaseURL)
+
+	// Make the POST request
+	body, err := s.httpClient.Post(ctx, requestURL, jsonBody)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(body)), nil
+}
+
+func (s *Server) getGasPricesHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Build the request URL
+	requestURL := fmt.Sprintf("%s/v1/gas/prices", BaseURL)
+
+	// Make the request
+	body, err := s.httpClient.Get(ctx, requestURL)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(body)), nil
+}
+
+func (s *Server) getGasSuggestionHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Get required parameter
+	chainId := getStringArg(request, "chainId")
+
+	if chainId == "" {
+		return mcp.NewToolResultError("chainId parameter is required"), nil
+	}
+
+	// Build the request URL
+	requestURL := fmt.Sprintf("%s/v1/gas/suggestion/%s", BaseURL, chainId)
+
+	// Make the request
+	body, err := s.httpClient.Get(ctx, requestURL)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("error making request: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(body)), nil
+}
+
+func (s *Server) testApiKeyHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	if s.apiKey == "" {
+		return mcp.NewToolResultError("No API key configured. Set LIFI_API_KEY environment variable or use --api-key flag."), nil
+	}
+
+	requestURL := fmt.Sprintf("%s/v1/keys/test", BaseURL)
+	body, err := s.httpClient.Get(ctx, requestURL)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("API key test failed: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(body)), nil
 }
 
 func (s *Server) getWalletAddressHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
