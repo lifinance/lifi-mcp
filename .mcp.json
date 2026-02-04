@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "lifi": {
+      "command": "go",
+      "args": ["run", "."],
+      "env": {}
+    }
+  }
+}
