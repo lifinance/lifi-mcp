@@ -556,6 +556,30 @@ These examples demonstrate actual tool responses from the LI.FI MCP server. Use 
 go install github.com/lifinance/lifi-mcp@latest
 ```
 
+#### Using Docker
+
+```bash
+# Build the image
+docker build -t lifi-mcp .
+
+# Run the server
+docker run -p 8080:8080 lifi-mcp
+```
+
+Or with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Override defaults via environment variables:
+
+```bash
+PORT=9090 LOG_LEVEL=debug docker compose up --build
+```
+
+The Docker image uses a multi-stage build (golang:1.24-alpine → distroless) producing an ~11MB image. It runs as non-root (UID 65532) with no shell or package manager in the runtime image.
+
 ### Usage
 
 Start the MCP server:
@@ -666,6 +690,71 @@ With an API key for higher rate limits:
   }
 }
 ```
+
+## Deployment
+
+### Container Details
+
+| Property | Value |
+|----------|-------|
+| Base image | `gcr.io/distroless/static-debian12:nonroot` |
+| Image size | ~11 MB |
+| User | `nonroot` (UID 65532) |
+| Exposed port | 8080 (configurable via `--port`) |
+| MCP endpoint | `/mcp` (POST) |
+| Graceful shutdown | 10 seconds (responds to SIGTERM) |
+
+### Building
+
+```bash
+docker build -t lifi-mcp .
+```
+
+### Running
+
+```bash
+docker run -p 8080:8080 lifi-mcp
+```
+
+Override flags by appending arguments (the entrypoint is the binary, CMD provides defaults):
+
+```bash
+docker run -p 9090:9090 lifi-mcp --port 9090 --log-level debug
+```
+
+### Environment
+
+The server requires **no environment variables, secrets, or config files**. API keys are passed per-request by clients via `Authorization: Bearer <key>` or `X-LiFi-Api-Key: <key>` headers — nothing is stored server-side.
+
+### Health Checking
+
+The server doesn't expose a dedicated HTTP health endpoint. For orchestrator health checks:
+
+- **TCP check** on port 8080 — confirms the server is listening
+- **MCP call** — send an `initialize` request for a full end-to-end check:
+
+```bash
+curl -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"healthcheck","version":"1.0.0"}}}'
+```
+
+### Resource Requirements
+
+The server is lightweight and stateless:
+
+- **Memory**: 256 MB limit recommended (typical usage ~30-50 MB)
+- **CPU**: 1 vCPU sufficient
+- **Disk**: None (read-only filesystem compatible)
+- **Network**: Outbound HTTPS to `li.quest` (LI.FI API)
+
+### Container Security
+
+- Runs as non-root user (UID 65532)
+- No shell or package manager in runtime image
+- No secrets baked into the image
+- Compatible with `--read-only` filesystem flag
+- Stripped binary (`-s -w -trimpath`)
 
 ## License
 
