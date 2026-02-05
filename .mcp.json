@@ -1,9 +1,8 @@
 {
   "mcpServers": {
     "lifi": {
-      "command": "go",
-      "args": ["run", "."],
-      "env": {}
+      "type": "http",
+      "url": "http://localhost:8080/mcp"
     }
   }
 }
