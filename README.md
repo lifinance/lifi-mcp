@@ -1,17 +1,6 @@
 # LiFi MCP Server
 
-> ⚠️ **IMPORTANT SECURITY DISCLAIMER** ⚠️
-> 
-> **DO NOT use this tool with your main wallet keystore or wallets containing significant funds!**
-> 
-> This tool is for testing and experimental purposes only. There is potential for loss of funds due to:
-> - Software bugs or security vulnerabilities
-> - Transaction errors or misconfigurations
-> - Network issues or smart contract failures
-> 
-> Neither LI.FI nor the developers of this tool are responsible for any loss of funds resulting from the use of this freely available open-source software.
-> 
-> **Use at your own risk with test wallets only.**
+> **Note:** This server provides **read-only** tools — it does not sign or broadcast transactions. Quote responses include unsigned `transactionRequest` objects that must be signed and submitted externally using your own wallet. Neither LI.FI nor the developers of this tool are responsible for any loss of funds resulting from the use of this freely available open-source software.
 
 This MCP server integrates with the [LI.FI API](https://li.quest) to provide cross-chain swap functionality across multiple liquidity pools and bridges via the Model Context Protocol (MCP).
 
@@ -87,7 +76,12 @@ The Model Context Protocol (MCP) is a protocol for AI model integration, allowin
 
 - **test-api-key** - Verify API key is valid
   - Returns key status and rate limit information
-  - Requires API key configured via `LIFI_API_KEY` env var or `--api-key` flag
+  - API key must be provided via `Authorization: Bearer` or `X-LiFi-Api-Key` header
+
+#### Health Check
+
+- **health-check** - Check server health and version
+  - Returns server status and version information
 
 #### Balance & Allowance Queries
 
@@ -98,28 +92,8 @@ The Model Context Protocol (MCP) is a protocol for AI model integration, allowin
   - Parameters: `chain` (required), `tokenAddress`, `walletAddress` (required), `rpcUrl` (optional)
 
 - **get-allowance** - Check token spending approval
-  - **Important:** Verify allowance before swaps; if insufficient, call approve-token
+  - **Important:** Verify allowance before swaps; if insufficient, approve tokens using your wallet
   - Parameters: `chain` (required), `tokenAddress`, `ownerAddress`, `spenderAddress` (required), `rpcUrl` (optional)
-
-#### Transaction Operations (Keystore Required)
-
-> **Note:** These tools require the `--keystore` flag at startup.
-
-- **get-wallet-address** - Get address of loaded wallet
-
-- **execute-quote** - Sign and broadcast a swap transaction
-  - **Workflow:** get-quote → get-allowance → approve-token (if needed) → execute-quote
-  - Parameters: `chain` (required), `transactionRequest` (required, from get-quote), `rpcUrl` (optional)
-
-- **approve-token** - Approve ERC20 spending for swaps
-  - Required before swapping ERC20 tokens (not needed for native tokens)
-  - Parameters: `chain` (required), `tokenAddress`, `spenderAddress`, `amount` (required), `rpcUrl` (optional)
-
-- **transfer-token** - Direct ERC20 transfer (no swap)
-  - Parameters: `chain` (required), `tokenAddress`, `to`, `amount` (required), `rpcUrl` (optional)
-
-- **transfer-native** - Direct native token transfer
-  - Parameters: `chain` (required), `to`, `amount` (in wei, required), `rpcUrl` (optional)
 
 ### Common Chain IDs
 
@@ -140,8 +114,8 @@ The Model Context Protocol (MCP) is a protocol for AI model integration, allowin
 2. get-token (chain, symbol)     # Get token addresses
 3. get-quote (...)               # Get best route and transactionRequest
 4. get-allowance (...)           # Check if approval needed
-5. approve-token (...)           # If allowance < amount
-6. execute-quote (...)           # Execute the swap
+5. (external) Approve tokens using your wallet if allowance < amount
+6. (external) Sign and broadcast transactionRequest using your wallet
 7. get-status (txHash)           # Track cross-chain progress
 ```
 
@@ -587,41 +561,28 @@ go install github.com/lifinance/lifi-mcp@latest
 Start the MCP server:
 
 ```bash
-lifi-mcp
+lifi-mcp --port 8080
 ```
 
-With keystore for transaction capabilities:
+Available flags:
 
 ```bash
-lifi-mcp --keystore <keystore-name> --password <keystore-password>
-```
-
-Check the version:
-
-```bash
-lifi-mcp --version
+lifi-mcp --port 8080        # HTTP server port (default: 8080)
+lifi-mcp --host 0.0.0.0     # HTTP server host (default: 0.0.0.0)
+lifi-mcp --log-level debug  # Log level: debug, info, warn, error (default: info)
+lifi-mcp --version          # Show version information
 ```
 
 ### API Key Configuration
 
-For higher rate limits (200 req/min vs 200 req/2hr), configure a LI.FI API key:
+API keys are passed per-request via HTTP headers (not server-side configuration). This enables multi-tenant deployments where each client uses their own key.
 
-#### Environment Variable (Recommended)
+Include your LI.FI API key in requests using either header:
 
-```bash
-export LIFI_API_KEY=your_api_key
-./lifi-mcp
-```
+- `Authorization: Bearer your_api_key`
+- `X-LiFi-Api-Key: your_api_key`
 
-#### Command-Line Flag
-
-```bash
-./lifi-mcp --api-key=your_api_key
-```
-
-The `--api-key` flag overrides the environment variable if both are set.
-
-#### Testing Your API Key
+Without an API key, the server uses the public rate limit (200 req/2hr). With an API key, you get higher rate limits (200 req/min).
 
 Use the `test-api-key` tool to verify your key is valid.
 
@@ -630,14 +591,11 @@ Use the `test-api-key` tool to verify your key is valid.
 Use the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) to interactively test the server:
 
 ```bash
-# Build the server
-go build .
+# Build and start the server
+go build . && ./lifi-mcp --port 8080
 
-# Launch with MCP Inspector (without API key)
-npx @modelcontextprotocol/inspector ./lifi-mcp
-
-# Launch with API key
-npx @modelcontextprotocol/inspector -e LIFI_API_KEY=your_key ./lifi-mcp
+# In another terminal, launch MCP Inspector pointing at the HTTP endpoint
+npx @modelcontextprotocol/inspector --url http://localhost:8080/mcp
 ```
 
 Opens a web UI at http://localhost:6274 where you can browse and test all available tools.
@@ -646,104 +604,64 @@ Opens a web UI at http://localhost:6274 where you can browse and test all availa
 
 You can import the server in your Go projects:
 
-#### Stdio Mode
-
-```go
-import "github.com/lifinance/lifi-mcp/server"
-
-func main() {
-    // Create a new server with version and optional API key
-    s := server.NewServer("1.0.0", "your_api_key") // or "" for no API key
-
-    // Start the server in stdio mode
-    if err := s.ServeStdio(); err != nil {
-        log.Fatalf("Server error: %v", err)
-    }
-}
-```
-
-#### In-Process Mode
-
-For in-process usage with the mcp-go client library:
-
 ```go
 import (
-    "context"
-    "log"
-    
-    "github.com/mark3labs/mcp-go/client"
-    "github.com/mark3labs/mcp-go/client/transport"
+    "fmt"
+    "log/slog"
+    "os"
+    "time"
+
     "github.com/lifinance/lifi-mcp/server"
+    mcpserver "github.com/mark3labs/mcp-go/server"
 )
 
 func main() {
-    // Create the LiFi MCP server with optional API key
-    lifiServer := server.NewServer("1.0.0", "") // or "your_api_key" for higher rate limits
+    logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
-    // Create an in-process transport using the server's MCPServer
-    inProcessTransport := transport.NewInProcessTransport(lifiServer.GetMCPServer())
+    // Create the LiFi MCP server (API keys are per-request, not server-side)
+    s := server.NewServer("1.0.0", logger)
 
-    // Create an MCP client using the in-process transport
-    mcpClient := client.NewMCPClient(inProcessTransport)
+    // Create a Streamable HTTP server
+    httpServer := mcpserver.NewStreamableHTTPServer(
+        s.GetMCPServer(),
+        mcpserver.WithEndpointPath("/mcp"),
+        mcpserver.WithHeartbeatInterval(30*time.Second),
+        mcpserver.WithStateLess(true),
+        mcpserver.WithHTTPContextFunc(server.ExtractAPIKeyFromRequest),
+    )
 
-    // Start the transport
-    ctx := context.Background()
-    if err := mcpClient.Connect(ctx); err != nil {
-        log.Fatalf("Failed to connect: %v", err)
-    }
-    defer mcpClient.Close()
-
-    // Initialize the client
-    if err := mcpClient.Initialize(ctx); err != nil {
-        log.Fatalf("Failed to initialize: %v", err)
-    }
-
-    // List available tools
-    tools, err := mcpClient.ListTools(ctx)
-    if err != nil {
-        log.Fatalf("Failed to list tools: %v", err)
-    }
-
-    // Use the tools...
-    result, err := mcpClient.CallTool(ctx, "get-chain-by-name", map[string]any{
-        "name": "ethereum",
-    })
-    if err != nil {
-        log.Fatalf("Failed to call tool: %v", err)
+    // Start serving
+    if err := httpServer.Start("0.0.0.0:8080"); err != nil {
+        logger.Error("Server error", "error", err)
+        os.Exit(1)
     }
 }
 ```
 
-### Wallet Management
-
-The server will search for keystore files in the standard Ethereum keystore directory:
-- Linux: ~/.ethereum/keystore
-- macOS: ~/Library/Ethereum/keystore
-- Windows: %APPDATA%\Ethereum\keystore
-
 ### Usage with Model Context Protocol
 
-To integrate this server with apps that support MCP:
+To integrate this server with apps that support MCP, point them at the Streamable HTTP endpoint:
 
 ```json
 {
   "mcpServers": {
     "lifi": {
-      "command": "lifi-mcp",
-      "args": []
+      "url": "http://localhost:8080/mcp"
     }
   }
 }
 ```
 
-With keystore for transaction capabilities:
+With an API key for higher rate limits:
 
 ```json
 {
   "mcpServers": {
     "lifi": {
-      "command": "lifi-mcp",
-      "args": ["--keystore", "your-keystore", "--password", "your-password"]
+      "url": "http://localhost:8080/mcp",
+      "headers": {
+        "X-LiFi-Api-Key": "your_api_key"
+      }
     }
   }
 }

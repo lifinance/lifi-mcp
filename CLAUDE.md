@@ -8,11 +8,11 @@ See [AGENTS.md](./AGENTS.md) for build commands and code style guidelines.
 
 ## Project Context
 
-- **Language**: Go 1.23.6+ with mcp-go v0.39.1+
+- **Language**: Go 1.24.0+ with mcp-go v0.39.1+
 - **API**: LI.FI REST API at li.quest
-- **Protocol**: Model Context Protocol (MCP) via stdio or in-process transport
-- **Keystore**: Transaction tools require `--keystore` flag with Ethereum keystore
+- **Protocol**: Model Context Protocol (MCP) via Streamable HTTP transport on `/mcp` endpoint
+- **Multi-tenant**: API keys passed per-request via `Authorization: Bearer` or `X-LiFi-Api-Key` header
 
 ## Security
 
-⚠️ **Use test wallets only.** Never use main wallets or wallets with significant funds.
+All tools are read-only — no transaction signing or wallet management. API keys are passed per-request and never stored in server state.
