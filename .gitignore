@@ -1,2 +1,5 @@
 context/
 .aider*
+.gitignore
+.playwright-mcp/
+lifi-mcp
