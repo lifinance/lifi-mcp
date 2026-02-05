@@ -1,0 +1,15 @@
+services:
+  lifi-mcp:
+    build: .
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    command: ["--port", "8080", "--host", "0.0.0.0", "--log-level", "${LOG_LEVEL:-info}"]
+    stop_grace_period: 15s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "1.0"

@@ -1,0 +1,17 @@
+lifi-mcp
+.git
+.gitignore
+.claude/
+.aider*
+.vscode/
+.idea/
+.github/
+.goreleaser.yml
+.playwright-mcp/
+.mcp.json
+README.md
+LICENSE
+CLAUDE.md
+AGENTS.md
+install.sh
+context/
