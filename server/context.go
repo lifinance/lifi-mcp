@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -34,6 +35,16 @@ func ExtractAPIKeyFromRequest(ctx context.Context, r *http.Request) context.Cont
 	}
 
 	// No API key provided - will use default rate limits
+	return ctx
+}
+
+// ExtractAPIKeyFromEnv is the StdioContextFunc for mcp-go's stdio server.
+// It reads the LI.FI API key from the LIFI_API_KEY environment variable and stores it in context.
+func ExtractAPIKeyFromEnv(ctx context.Context) context.Context {
+	apiKey := os.Getenv("LIFI_API_KEY")
+	if apiKey != "" {
+		return context.WithValue(ctx, ctxKeyAPIKey, apiKey)
+	}
 	return ctx
 }
 

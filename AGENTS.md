@@ -3,6 +3,8 @@
 ## Build & Test Commands
 ```bash
 go build .                    # Build the main binary
+./lifi-mcp --port 8080       # Run in HTTP mode (default)
+LIFI_API_KEY=... ./lifi-mcp --transport stdio  # Run in stdio mode
 go test ./... -v             # Run all tests (currently no tests)
 go test ./... -run TestName  # Run a single test by name
 go mod tidy                  # Clean up dependencies
