@@ -582,29 +582,46 @@ The Docker image uses a multi-stage build (golang:1.24-alpine → distroless) pr
 
 ### Usage
 
-Start the MCP server:
+The server supports two transport modes:
+
+#### Stdio Mode (default) — Local agents
+
+By default, the server starts in stdio mode for local MCP clients (Claude Desktop, Cursor, etc.). The API key is read from the `LIFI_API_KEY` environment variable:
 
 ```bash
-lifi-mcp --port 8080
+LIFI_API_KEY=your_api_key lifi-mcp
 ```
 
-Available flags:
+Without `LIFI_API_KEY`, the server uses the public rate limit (200 req/2hr).
+
+#### HTTP Mode — Multi-tenant
+
+Start the HTTP server for multi-tenant deployments where each client passes their own API key per-request:
 
 ```bash
-lifi-mcp --port 8080        # HTTP server port (default: 8080)
-lifi-mcp --host 0.0.0.0     # HTTP server host (default: 0.0.0.0)
+lifi-mcp --transport http --port 8080
+```
+
+#### Available Flags
+
+```bash
+lifi-mcp --transport stdio  # Transport mode: stdio or http (default: stdio)
+lifi-mcp --port 8080        # HTTP server port (default: 8080, http mode only)
+lifi-mcp --host 0.0.0.0     # HTTP server host (default: 0.0.0.0, http mode only)
 lifi-mcp --log-level debug  # Log level: debug, info, warn, error (default: info)
 lifi-mcp --version          # Show version information
 ```
 
 ### API Key Configuration
 
-API keys are passed per-request via HTTP headers (not server-side configuration). This enables multi-tenant deployments where each client uses their own key.
+**HTTP mode**: API keys are passed per-request via HTTP headers. This enables multi-tenant deployments where each client uses their own key.
 
 Include your LI.FI API key in requests using either header:
 
 - `Authorization: Bearer your_api_key`
 - `X-LiFi-Api-Key: your_api_key`
+
+**Stdio mode**: Set the `LIFI_API_KEY` environment variable before starting the server.
 
 Without an API key, the server uses the public rate limit (200 req/2hr). With an API key, you get higher rate limits (200 req/min).
 
@@ -616,7 +633,7 @@ Use the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) to in
 
 ```bash
 # Build and start the server
-go build . && ./lifi-mcp --port 8080
+go build . && ./lifi-mcp --transport http --port 8080
 
 # In another terminal, launch MCP Inspector pointing at the HTTP endpoint
 npx @modelcontextprotocol/inspector --url http://localhost:8080/mcp
@@ -664,7 +681,26 @@ func main() {
 
 ### Usage with Model Context Protocol
 
-To integrate this server with apps that support MCP, point them at the Streamable HTTP endpoint:
+#### Stdio Transport (Claude Desktop, Cursor, etc.)
+
+For local MCP clients that use stdio, add the following to your MCP client config:
+
+```json
+{
+  "mcpServers": {
+    "lifi": {
+      "command": "lifi-mcp",
+      "env": {
+        "LIFI_API_KEY": "your_api_key"
+      }
+    }
+  }
+}
+```
+
+#### HTTP Transport (remote / multi-tenant)
+
+For apps that connect to a running HTTP server:
 
 ```json
 {

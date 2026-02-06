@@ -21,6 +21,7 @@ func main() {
 	var (
 		port        = flag.Int("port", 8080, "HTTP server port")
 		host        = flag.String("host", "0.0.0.0", "HTTP server host (use 0.0.0.0 for container deployment)")
+		transport   = flag.String("transport", "stdio", "Transport mode: stdio or http")
 		showVersion = flag.Bool("version", false, "Show version information")
 		logLevel    = flag.String("log-level", "info", "Log level: debug, info, warn, error")
 	)
@@ -38,44 +39,66 @@ func main() {
 	// Create the server (no API key - it's per-request now)
 	s := server.NewServer(version, logger)
 
-	logger.Info("API keys are now passed per-request via Authorization header (Bearer token) or X-LiFi-Api-Key header")
-
-	// Set up signal handling for graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	// Create the Streamable HTTP server
-	httpServer := mcpserver.NewStreamableHTTPServer(
-		s.GetMCPServer(),
-		mcpserver.WithEndpointPath("/mcp"),
-		mcpserver.WithHeartbeatInterval(30*time.Second),
-		mcpserver.WithStateLess(true), // Stateless for multi-tenant
-		mcpserver.WithHTTPContextFunc(server.ExtractAPIKeyFromRequest),
-	)
-
-	// Start server in a goroutine
-	addr := fmt.Sprintf("%s:%d", *host, *port)
-	go func() {
-		logger.Info("Starting LiFi MCP Server",
+	switch *transport {
+	case "stdio":
+		hasKey := os.Getenv("LIFI_API_KEY") != ""
+		logger.Info("Starting LiFi MCP Server (stdio)",
 			"version", version,
-			"address", addr,
-			"endpoint", "/mcp",
+			"apiKeySet", hasKey,
 		)
-		if err := httpServer.Start(addr); err != nil {
-			logger.Error("Server error", "error", err)
+		if err := mcpserver.ServeStdio(
+			s.GetMCPServer(),
+			mcpserver.WithStdioContextFunc(server.ExtractAPIKeyFromEnv),
+		); err != nil {
+			logger.Error("Stdio server error", "error", err)
 			os.Exit(1)
 		}
-	}()
 
-	// Wait for shutdown signal
-	<-sigChan
-	logger.Info("Received shutdown signal, exiting...")
+	case "http":
+		logger.Info("API keys are now passed per-request via Authorization header (Bearer token) or X-LiFi-Api-Key header")
 
-	// Graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := httpServer.Shutdown(ctx); err != nil {
-		logger.Error("Error during shutdown", "error", err)
+		// Set up signal handling for graceful shutdown
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+		// Create the Streamable HTTP server
+		httpServer := mcpserver.NewStreamableHTTPServer(
+			s.GetMCPServer(),
+			mcpserver.WithEndpointPath("/mcp"),
+			mcpserver.WithHeartbeatInterval(30*time.Second),
+			mcpserver.WithStateLess(true), // Stateless for multi-tenant
+			mcpserver.WithHTTPContextFunc(server.ExtractAPIKeyFromRequest),
+		)
+
+		// Start server in a goroutine
+		addr := fmt.Sprintf("%s:%d", *host, *port)
+		go func() {
+			logger.Info("Starting LiFi MCP Server",
+				"version", version,
+				"address", addr,
+				"endpoint", "/mcp",
+			)
+			if err := httpServer.Start(addr); err != nil {
+				logger.Error("Server error", "error", err)
+				os.Exit(1)
+			}
+		}()
+
+		// Wait for shutdown signal
+		<-sigChan
+		logger.Info("Received shutdown signal, exiting...")
+
+		// Graceful shutdown
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := httpServer.Shutdown(ctx); err != nil {
+			logger.Error("Error during shutdown", "error", err)
+		}
+
+	default:
+		logger.Error("Unknown transport mode", "transport", *transport)
+		fmt.Fprintf(os.Stderr, "Error: unknown transport %q (use \"http\" or \"stdio\")\n", *transport)
+		os.Exit(1)
 	}
 }
 
